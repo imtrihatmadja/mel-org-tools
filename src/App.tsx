@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import mockData from './data/mockData';
 import { LocationData, Case, IssueCategory, LocationStats, HistoricalTrend, Beneficiary, Champion, WorkerOrganization, Reflection } from './types';
 import AdminShell from './components/AdminShell';
+import { fetchAllDataFromSupabase, supabase } from './lib/supabase';
 import IndonesiaMap from './components/IndonesiaMap';
 import KPICards from './components/KPICards';
 import Charts from './components/Charts';
@@ -53,6 +54,33 @@ export default function App() {
   const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
   const [forceAddReflection, setForceAddReflection] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoadingSupabase, setIsLoadingSupabase] = useState(false);
+
+  // Mekanisme Pemuatan Dinamis Data dari Database Supabase Anda!
+  useEffect(() => {
+    async function sinkronkanSupabase() {
+      setIsLoadingSupabase(true);
+      try {
+        const dbRes = await fetchAllDataFromSupabase();
+        if (dbRes) {
+          if (dbRes.locations && dbRes.locations.length > 0) {
+            setLocations(dbRes.locations);
+          }
+          if (dbRes.beneficiaries) {
+            setBeneficiaries(dbRes.beneficiaries);
+          }
+          if (dbRes.nationalTrend && dbRes.nationalTrend.length > 0) {
+            setNationalTrend(dbRes.nationalTrend);
+          }
+        }
+      } catch (err) {
+        console.error("Gagal menyelesaikan sinkronisasi database:", err);
+      } finally {
+        setIsLoadingSupabase(false);
+      }
+    }
+    sinkronkanSupabase();
+  }, []);
 
   const [addLocForm, setAddLocForm] = useState({
     preset: '',
@@ -128,24 +156,88 @@ export default function App() {
     });
   }, [locations, beneficiaries]);
 
-  const handleAddBeneficiary = (newB: Beneficiary) => {
+  const handleAddBeneficiary = async (newB: Beneficiary) => {
     setBeneficiaries(prev => [newB, ...prev]);
-  };
-
-  const handleImportBeneficiaries = (newList: Beneficiary[], overwrite: boolean) => {
-    if (overwrite) {
-      setBeneficiaries(newList);
-    } else {
-      setBeneficiaries(prev => [...newList, ...prev]);
+    if (supabase) {
+      try {
+        await supabase.from('beneficiaries').upsert({
+          id: newB.id,
+          location_id: newB.locationId,
+          name: newB.name,
+          phone: newB.phone || '',
+          origin: newB.origin || '',
+          age: newB.age || 30,
+          category: newB.category || 'Umum',
+          notes: newB.notes || ''
+        });
+      } catch (err) {
+        console.error("Gagal simpan penerima manfaat ke Supabase:", err);
+      }
     }
   };
 
-  const handleDeleteBeneficiary = (id: string) => {
-    setBeneficiaries(prev => prev.filter(b => b.id !== id));
+  const handleImportBeneficiaries = async (newList: Beneficiary[], overwrite: boolean) => {
+    if (overwrite) {
+      setBeneficiaries(newList);
+      if (supabase) {
+        try {
+          await supabase.from('beneficiaries').delete().neq('id', 'placeholder-item');
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    } else {
+      setBeneficiaries(prev => [...newList, ...prev]);
+    }
+
+    if (supabase) {
+      try {
+        const payload = newList.map(b => ({
+          id: b.id,
+          location_id: b.locationId,
+          name: b.name,
+          phone: b.phone || '',
+          origin: b.origin || '',
+          age: b.age || 30,
+          category: b.category || 'Umum',
+          notes: b.notes || ''
+        }));
+        await supabase.from('beneficiaries').insert(payload);
+      } catch (err) {
+        console.error("Gagal kirim import penerima manfaat ke Supabase:", err);
+      }
+    }
   };
 
-  const handleUpdateBeneficiary = (updated: Beneficiary) => {
+  const handleDeleteBeneficiary = async (id: string) => {
+    setBeneficiaries(prev => prev.filter(b => b.id !== id));
+    if (supabase) {
+      try {
+        await supabase.from('beneficiaries').delete().eq('id', id);
+      } catch (err) {
+        console.error("Gagal menghapus penerima manfaat di Supabase:", err);
+      }
+    }
+  };
+
+  const handleUpdateBeneficiary = async (updated: Beneficiary) => {
     setBeneficiaries(prev => prev.map(b => b.id === updated.id ? updated : b));
+    if (supabase) {
+      try {
+        await supabase.from('beneficiaries').upsert({
+          id: updated.id,
+          location_id: updated.locationId,
+          name: updated.name,
+          phone: updated.phone || '',
+          origin: updated.origin || '',
+          age: updated.age || 30,
+          category: updated.category || 'Umum',
+          notes: updated.notes || ''
+        });
+      } catch (err) {
+        console.error("Gagal mengubah data penerima manfaat di Supabase:", err);
+      }
+    }
   };
   
   // Location specific tab selection state: 'overview' | 'activism' | 'history'
@@ -160,7 +252,7 @@ export default function App() {
     setIsKPIModalOpen(true);
   };
 
-  const handleSaveKPIStats = (locationId: string, updatedStats: LocationStats, actionType: 'edit' | 'tambah') => {
+  const handleSaveKPIStats = async (locationId: string, updatedStats: LocationStats, actionType: 'edit' | 'tambah') => {
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locationId) return loc;
@@ -187,6 +279,9 @@ export default function App() {
           finalStats.casesPending = Math.max(0, finalStats.casesCount - finalStats.casesSolved);
         }
 
+        // Tulis manual override KPI ke localStorage agar awet & presisi pasca-refresh di GitHub Pages
+        localStorage.setItem(`DFW_LOCAL_KPI_${locationId}`, JSON.stringify(finalStats));
+
         // Generate nice automated feedback milestone
         const actionText = actionType === 'edit' ? 'Koreksi/pembaharuan' : 'Entri peluruhan kegiatan baru';
         const newTimelineEvent = {
@@ -197,6 +292,16 @@ export default function App() {
           }${updatedStats.activeLearningCircles > 0 ? `+${updatedStats.activeLearningCircles} lingkaran belajar.` : 'penyesuaian data operasional port.'}`,
           category: 'pencapaian' as const
         };
+
+        if (supabase) {
+          supabase.from('timeline_events').insert({
+            location_id: locationId,
+            date: "11 Juni 2026",
+            title: `Data KPI Terperbarui`,
+            description: `${actionText} berhasil disinkronkan ke cloud.`,
+            category: 'pencapaian'
+          }).then();
+        }
 
         return {
           ...loc,
@@ -351,7 +456,7 @@ export default function App() {
   }, [locationsWithDerivedStats]);
 
   // Case update & deletion pipelines
-  const handleUpdateCase = (locId: string, updatedCase: Case) => {
+  const handleUpdateCase = async (locId: string, updatedCase: Case) => {
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -383,9 +488,27 @@ export default function App() {
         };
       });
     });
+
+    if (supabase) {
+      try {
+        await supabase.from('cases').upsert({
+          id: updatedCase.id,
+          location_id: locId,
+          title: updatedCase.title,
+          category: updatedCase.category,
+          status: updatedCase.status,
+          date: updatedCase.date,
+          description: updatedCase.description,
+          reporter: updatedCase.reporter,
+          impact_level: updatedCase.impact_level
+        });
+      } catch (err) {
+        console.error("Gagal memperbarui kasus di Supabase:", err);
+      }
+    }
   };
 
-  const handleDeleteCase = (locId: string, caseId: string) => {
+  const handleDeleteCase = async (locId: string, caseId: string) => {
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -409,32 +532,41 @@ export default function App() {
         };
       });
     });
+
+    if (supabase) {
+      try {
+        await supabase.from('cases').delete().eq('id', caseId);
+      } catch (err) {
+        console.error("Gagal menghapus kasus dari Supabase:", err);
+      }
+    }
   };
 
   // Simulated Case update pipeline
-  const handleAddCase = (locId: string, caseData: Omit<Case, 'id' | 'date'>) => {
+  const handleAddCase = async (locId: string, caseData: Omit<Case, 'id' | 'date'>) => {
+    // Generate serial ID code
+    const codePrefix = locId === 'muara-baru' ? 'MB' : locId === 'benoa' ? 'BA' : 'BT';
+    
+    // Temukan info instansi pelabuhan saat ini untuk hitung serial ID
+    const currentLoc = locations.find(l => l.id === locId);
+    const nextIdNumber = (currentLoc?.cases.length || 0) + 22;
+    const newCode = `${codePrefix}-${String(nextIdNumber).padStart(3, '0')}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const newCase: Case = {
+      id: newCode,
+      title: caseData.title,
+      category: caseData.category,
+      status: 'Baru',
+      date: todayStr,
+      description: caseData.description,
+      reporter: caseData.reporter,
+      impact_level: caseData.impact_level
+    };
+
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
-
-        // Generate serial ID code
-        const codePrefix = locId === 'muara-baru' ? 'MB' : locId === 'benoa' ? 'BA' : 'BT';
-        const nextIdNumber = loc.cases.length + 22;
-        const newCode = `${codePrefix}-${String(nextIdNumber).padStart(3, '0')}`;
-        
-        // Use today's mock current date
-        const todayStr = "2026-06-11";
-
-        const newCase: Case = {
-          id: newCode,
-          title: caseData.title,
-          category: caseData.category,
-          status: 'Baru',
-          date: todayStr,
-          description: caseData.description,
-          reporter: caseData.reporter,
-          impact_level: caseData.impact_level
-        };
 
         // Prepend to cases array
         const updatedCases = [newCase, ...loc.cases];
@@ -482,6 +614,32 @@ export default function App() {
       });
     });
 
+    if (supabase) {
+      try {
+        await supabase.from('cases').insert({
+          id: newCode,
+          location_id: locId,
+          title: caseData.title,
+          category: caseData.category,
+          status: 'Baru',
+          date: todayStr,
+          description: caseData.description,
+          reporter: caseData.reporter,
+          impact_level: caseData.impact_level
+        });
+
+        await supabase.from('timeline_events').insert({
+          location_id: locId,
+          date: "11 Juni 2026",
+          title: `Laporan Lapor Kasus #${newCode}`,
+          description: `${caseData.title}. Dilaporkan oleh ${caseData.reporter}.`,
+          category: 'kasus'
+        });
+      } catch (err) {
+        console.error("Gagal menambahkan kasus ke Supabase:", err);
+      }
+    }
+
     // Update temporal trend database stats for year 2026
     setNationalTrend(prevTrend => {
       return prevTrend.map(t => {
@@ -496,25 +654,26 @@ export default function App() {
   };
 
   // Reflections CRUD Pipelines
-  const handleAddReflection = (locId: string, reflectionData: Omit<Reflection, 'id' | 'date'>) => {
+  const handleAddReflection = async (locId: string, reflectionData: Omit<Reflection, 'id' | 'date'>) => {
+    const codePrefix = locId === 'muara-baru' ? 'MB' : locId === 'benoa' ? 'BA' : 'BT';
+    const currentLoc = locations.find(l => l.id === locId);
+    const nextIdNumber = ((currentLoc?.reflections || []).length) + 1;
+    const newCode = `REF-${codePrefix}-${String(nextIdNumber).padStart(3, '0')}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const newReflection: Reflection = {
+      id: newCode,
+      title: reflectionData.title,
+      category: reflectionData.category,
+      date: todayStr,
+      content: reflectionData.content,
+      author: reflectionData.author
+    };
+
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
-
-        const codePrefix = locId === 'muara-baru' ? 'MB' : locId === 'benoa' ? 'BA' : 'BT';
         const currentReflections = loc.reflections || [];
-        const nextIdNumber = currentReflections.length + 1;
-        const newCode = `REF-${codePrefix}-${String(nextIdNumber).padStart(3, '0')}`;
-        const todayStr = "2026-06-12";
-
-        const newReflection: Reflection = {
-          id: newCode,
-          title: reflectionData.title,
-          category: reflectionData.category,
-          date: todayStr,
-          content: reflectionData.content,
-          author: reflectionData.author
-        };
 
         return {
           ...loc,
@@ -522,9 +681,25 @@ export default function App() {
         };
       });
     });
+
+    if (supabase) {
+      try {
+        await supabase.from('reflections').insert({
+          id: newCode,
+          location_id: locId,
+          title: reflectionData.title,
+          date: todayStr,
+          category: reflectionData.category,
+          content: reflectionData.content,
+          author: reflectionData.author
+        });
+      } catch (err) {
+        console.error("Gagal menambahkan refleksi ke Supabase:", err);
+      }
+    }
   };
 
-  const handleUpdateReflection = (locId: string, refId: string, updatedRef: Reflection) => {
+  const handleUpdateReflection = async (locId: string, refId: string, updatedRef: Reflection) => {
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -536,9 +711,25 @@ export default function App() {
         };
       });
     });
+
+    if (supabase) {
+      try {
+        await supabase.from('reflections').upsert({
+          id: updatedRef.id,
+          location_id: locId,
+          title: updatedRef.title,
+          date: updatedRef.date,
+          category: updatedRef.category,
+          content: updatedRef.content,
+          author: updatedRef.author
+        });
+      } catch (err) {
+        console.error("Gagal memperbarui refleksi di Supabase:", err);
+      }
+    }
   };
 
-  const handleDeleteReflection = (locId: string, refId: string) => {
+  const handleDeleteReflection = async (locId: string, refId: string) => {
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -550,10 +741,18 @@ export default function App() {
         };
       });
     });
+
+    if (supabase) {
+      try {
+        await supabase.from('reflections').delete().eq('id', refId);
+      } catch (err) {
+        console.error("Gagal menghapus refleksi dari Supabase:", err);
+      }
+    }
   };
 
   // Champions CRUD Pipelines
-  const handleAddChampion = (locId: string, champ: Champion) => {
+  const handleAddChampion = async (locId: string, champ: Champion) => {
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -567,9 +766,27 @@ export default function App() {
         };
       });
     });
+
+    if (supabase) {
+      try {
+        await supabase.from('champions').insert({
+          location_id: locId,
+          name: champ.name,
+          role: champ.role,
+          description: champ.description || '',
+          status: champ.status || 'Aktif',
+          phone: champ.phone || ''
+        });
+      } catch (err) {
+        console.error("Gagal menambahkan kader ke Supabase:", err);
+      }
+    }
   };
 
-  const handleUpdateChampion = (locId: string, index: number, updatedChamp: Champion) => {
+  const handleUpdateChampion = async (locId: string, index: number, updatedChamp: Champion) => {
+    const currentLoc = locations.find(l => l.id === locId);
+    const oldChampName = currentLoc?.champions[index]?.name;
+
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -580,9 +797,26 @@ export default function App() {
         };
       });
     });
+
+    if (supabase && oldChampName) {
+      try {
+        await supabase.from('champions').update({
+          name: updatedChamp.name,
+          role: updatedChamp.role,
+          description: updatedChamp.description || '',
+          status: updatedChamp.status || 'Aktif',
+          phone: updatedChamp.phone || ''
+        }).match({ location_id: locId, name: oldChampName });
+      } catch (err) {
+        console.error("Gagal memperbarui kader di Supabase:", err);
+      }
+    }
   };
 
-  const handleDeleteChampion = (locId: string, index: number) => {
+  const handleDeleteChampion = async (locId: string, index: number) => {
+    const currentLoc = locations.find(l => l.id === locId);
+    const oldChampName = currentLoc?.champions[index]?.name;
+
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -597,10 +831,18 @@ export default function App() {
         };
       });
     });
+
+    if (supabase && oldChampName) {
+      try {
+        await supabase.from('champions').delete().match({ location_id: locId, name: oldChampName });
+      } catch (err) {
+        console.error("Gagal menghapus kader dari Supabase:", err);
+      }
+    }
   };
 
   // Organizations CRUD Pipelines
-  const handleAddOrganization = (locId: string, org: WorkerOrganization) => {
+  const handleAddOrganization = async (locId: string, org: WorkerOrganization) => {
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -614,9 +856,26 @@ export default function App() {
         };
       });
     });
+
+    if (supabase) {
+      try {
+        await supabase.from('organizations').insert({
+          location_id: locId,
+          name: org.name,
+          type: org.type,
+          established: org.established,
+          members: org.members
+        });
+      } catch (err) {
+        console.error("Gagal menambahkan organisasi ke Supabase:", err);
+      }
+    }
   };
 
-  const handleUpdateOrganization = (locId: string, index: number, updatedOrg: WorkerOrganization) => {
+  const handleUpdateOrganization = async (locId: string, index: number, updatedOrg: WorkerOrganization) => {
+    const currentLoc = locations.find(l => l.id === locId);
+    const oldOrgName = currentLoc?.organizations[index]?.name;
+
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -632,9 +891,25 @@ export default function App() {
         };
       });
     });
+
+    if (supabase && oldOrgName) {
+      try {
+        await supabase.from('organizations').update({
+          name: updatedOrg.name,
+          type: updatedOrg.type,
+          established: updatedOrg.established,
+          members: updatedOrg.members
+        }).match({ location_id: locId, name: oldOrgName });
+      } catch (err) {
+        console.error("Gagal memperbarui organisasi di Supabase:", err);
+      }
+    }
   };
 
-  const handleDeleteOrganization = (locId: string, index: number) => {
+  const handleDeleteOrganization = async (locId: string, index: number) => {
+    const currentLoc = locations.find(l => l.id === locId);
+    const oldOrgName = currentLoc?.organizations[index]?.name;
+
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
         if (loc.id !== locId) return loc;
@@ -650,9 +925,17 @@ export default function App() {
         };
       });
     });
+
+    if (supabase && oldOrgName) {
+      try {
+        await supabase.from('organizations').delete().match({ location_id: locId, name: oldOrgName });
+      } catch (err) {
+        console.error("Gagal menghapus organisasi dari Supabase:", err);
+      }
+    }
   };
 
-  const handleAddNewLocation = () => {
+  const handleAddNewLocation = async () => {
     if (!addLocForm.name.trim()) {
       alert("Silakan masukkan nama Pelabuhan/Hub!");
       return;
@@ -709,6 +992,28 @@ export default function App() {
     setLocations(prev => [...prev, newLoc]);
     setIsAddLocationModalOpen(false);
 
+    if (supabase) {
+      try {
+        await supabase.from('locations').insert({
+          id: slugId,
+          name: addLocForm.name,
+          province: addLocForm.province,
+          coordinate_x: Number(addLocForm.x),
+          coordinate_y: Number(addLocForm.y)
+        });
+
+        await supabase.from('timeline_events').insert({
+          location_id: slugId,
+          date: "11 Juni 2026",
+          title: "Inisiasi Hub Posko Baru",
+          description: `Pembentukan posko pengaduan bersama dan pemantauan hak asasi awak kapal perikanan di pelabuhan ${addLocForm.name}, ${addLocForm.province}.`,
+          category: "organisasi"
+        });
+      } catch (err) {
+        console.error("Gagal menambahkan lokasi ke Supabase:", err);
+      }
+    }
+
     // Reset Form
     setAddLocForm({
       preset: '',
@@ -742,6 +1047,19 @@ export default function App() {
       onLoginToggle={() => setIsLoggedIn(!isLoggedIn)}
     >
       
+      {/* Supabase Status Loading Alert Banner */}
+      {isLoadingSupabase && (
+        <div className="bg-emerald-50 border border-emerald-150 text-emerald-800 rounded-xl p-4 text-xs font-sans flex items-center justify-between shadow-xs mb-3 animate-pulse" id="database-loading-alert">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping"></span>
+            <span className="font-semibold text-emerald-800">Menghubungkan & Membaca Data Terkini dari Supabase Cloud...</span>
+          </div>
+          <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider font-mono">
+            Sinkronisasi Aktif
+          </span>
+        </div>
+      )}
+
       {/* 2026 Year Warning Alert in top of App */}
       {yearFilter !== 2026 && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-xs font-sans flex items-center gap-2.5 shadow-xs" id="temporal-filter-alert">
