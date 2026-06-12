@@ -50,6 +50,9 @@ export const AdminShell: React.FC<AdminShellProps> = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+  const [dbUrl, setDbUrl] = useState(localStorage.getItem('DFW_SUPABASE_URL') || '');
+  const [dbKey, setDbKey] = useState(localStorage.getItem('DFW_SUPABASE_ANON_KEY') || '');
 
   const menuItems: { id: string; label: string; icon: any }[] = [
     { id: 'nasional', label: 'Ringkasan Nasional', icon: LayoutDashboard },
@@ -64,6 +67,23 @@ export const AdminShell: React.FC<AdminShellProps> = ({
   const handleNavClick = (id: string) => {
     onActiveTabChange(id);
     setIsMobileMenuOpen(false);
+  };
+
+  const handleSaveDb = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('DFW_SUPABASE_URL', dbUrl.trim());
+    localStorage.setItem('DFW_SUPABASE_ANON_KEY', dbKey.trim());
+    setIsDbModalOpen(false);
+    window.location.reload();
+  };
+
+  const handleResetDb = () => {
+    localStorage.removeItem('DFW_SUPABASE_URL');
+    localStorage.removeItem('DFW_SUPABASE_ANON_KEY');
+    setDbUrl('');
+    setDbKey('');
+    setIsDbModalOpen(false);
+    window.location.reload();
   };
 
   return (
@@ -158,9 +178,18 @@ export const AdminShell: React.FC<AdminShellProps> = ({
 
         {/* Database Integration Monitor Indicator */}
         <div className="mx-4 my-2 p-3 rounded-lg bg-slate-50 border border-slate-200/80 text-slate-700 font-sans">
-          <div className="flex items-center gap-2 mb-1.5">
-            <Database className={`w-3.5 h-3.5 shrink-0 ${isSupabaseConfigured ? 'text-emerald-500' : 'text-slate-400'}`} />
-            <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500">Integrasi Database</span>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
+              <Database className={`w-3.5 h-3.5 shrink-0 ${isSupabaseConfigured ? 'text-emerald-500' : 'text-slate-400'}`} />
+              <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-500">Integrasi Database</span>
+            </div>
+            <button
+              onClick={() => setIsDbModalOpen(true)}
+              className="text-[9px] font-extrabold text-blue-600 hover:text-blue-800 underline uppercase tracking-wider cursor-pointer bg-transparent border-0 p-0"
+              title="Atur Kredensial Database"
+            >
+              Atur
+            </button>
           </div>
           {isSupabaseConfigured ? (
             <div>
@@ -178,8 +207,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                 <span className="text-[11px] font-bold text-slate-700">Offline / Mode Demo</span>
               </div>
-              <p className="text-[9px] text-slate-450 mt-1 leading-normal font-medium">
-                Data disimpan di memori klien. Isikan kredensial Supabase di berkas .env Anda untuk mengaktifkan database real.
+              <p className="text-[9px] text-slate-500 mt-1 leading-tight font-medium">
+                Data disimpan di memori klien. Klik <strong className="text-blue-600 cursor-pointer" onClick={() => setIsDbModalOpen(true)}>Atur</strong> untuk menyambungkan Supabase Anda secara instan!
               </p>
             </div>
           )}
@@ -284,6 +313,94 @@ export const AdminShell: React.FC<AdminShellProps> = ({
           onClick={() => setIsMobileMenuOpen(false)}
           className="fixed inset-0 bg-slate-900/30 z-30 md:hidden backdrop-blur-sm"
         />
+      )}
+
+      {/* MODAL CONFIG SUPABASE DATABASE */}
+      {isDbModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs" onClick={() => setIsDbModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl border border-slate-150 w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150 font-sans text-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <Database className="w-5 h-5 text-blue-600 shrink-0" />
+                <h3 className="text-base font-bold text-slate-900">Sambungan Database Supabase</h3>
+              </div>
+              <button
+                onClick={() => setIsDbModalOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDb} className="space-y-4">
+              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                Tautkan dashboard ini langsung ke database PostgreSQL Supabase Anda. Seluruh entri data (kasus, wilayah, kader, lingkaran belajar, refleksi, dsb) akan disimpan secara real-time dan persisten.
+              </p>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-550 uppercase tracking-wider">
+                  Supabase Project URL (VITE_SUPABASE_URL)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://abcde12345.supabase.co"
+                  required
+                  value={dbUrl}
+                  onChange={(e) => setDbUrl(e.target.value)}
+                  className="w-full text-xs font-mono bg-slate-50/50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 rounded-lg p-2.5 outline-none transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-slate-550 uppercase tracking-wider">
+                  Supabase Anon Public API Key (VITE_SUPABASE_ANON_KEY)
+                </label>
+                <textarea
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  required
+                  rows={3}
+                  value={dbKey}
+                  onChange={(e) => setDbKey(e.target.value)}
+                  className="w-full text-xs font-mono bg-slate-50/50 border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 rounded-lg p-2.5 outline-none transition-all resize-none"
+                />
+              </div>
+
+              <div className="p-3 rounded-lg bg-blue-50/60 border border-blue-105 text-emerald-800 font-sans text-[11px] leading-relaxed">
+                💡 <strong className="font-bold">Dimana mencarinya?</strong> Masuk ke dasbor Supabase Anda, buka panel <strong className="font-bold">Project Settings &gt; API</strong>, lalu salin URL dan kunci publik Anon Anda ke sini.
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 gap-3">
+                <div>
+                  {(localStorage.getItem('DFW_SUPABASE_URL') || localStorage.getItem('DFW_SUPABASE_ANON_KEY')) && (
+                    <button
+                      type="button"
+                      onClick={handleResetDb}
+                      className="px-3.5 py-2 text-xs font-bold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all cursor-pointer border-0"
+                    >
+                      Batal Hubungkan (Reset Key)
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsDbModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all cursor-pointer border-0"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm rounded-xl transition-all cursor-pointer border-0"
+                  >
+                    Simpan & Hubungkan
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
