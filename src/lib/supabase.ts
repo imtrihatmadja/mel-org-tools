@@ -67,7 +67,8 @@ export async function fetchAllDataFromSupabase(): Promise<{
       refsRes,
       timelineRes,
       beneficiariesRes,
-      trendRes
+      trendRes,
+      progressNotesRes
     ] = await Promise.all([
       supabase.from('locations').select('*'),
       supabase.from('organizations').select('*'),
@@ -76,7 +77,8 @@ export async function fetchAllDataFromSupabase(): Promise<{
       supabase.from('reflections').select('*'),
       supabase.from('timeline_events').select('*'),
       supabase.from('beneficiaries').select('*'),
-      supabase.from('national_trend').select('*')
+      supabase.from('national_trend').select('*'),
+      supabase.from('case_progress_notes').select('*')
     ]);
 
     // Tangani kemungkinan error pemuatan paralel
@@ -105,6 +107,7 @@ export async function fetchAllDataFromSupabase(): Promise<{
     const rawTimeline = timelineRes.data || [];
     const rawBeneficiaries = beneficiariesRes.data || [];
     const rawTrend = trendRes.error ? [] : (trendRes.data || []);
+    const rawProgressNotes = progressNotesRes?.data || [];
 
     // Konversi entitas Supabase ke Struktur Jaringan Data yang diharapkan state React
     const formattedLocations: LocationData[] = rawLocations.map((loc: any) => {
@@ -130,16 +133,26 @@ export async function fetchAllDataFromSupabase(): Promise<{
         phone: c.phone || ''
       }));
 
-      const mappingCases: Case[] = filteredCases.map((c: any) => ({
-        id: c.id,
-        title: c.title,
-        category: c.category,
-        status: (c.status || 'Baru') as 'Selesai' | 'Proses' | 'Baru',
-        date: c.date,
-        description: c.description,
-        reporter: c.reporter,
-        impact_level: (c.impact_level || 'Sedang') as 'Tinggi' | 'Sedang' | 'Rendah'
-      }));
+      const mappingCases: Case[] = filteredCases.map((c: any) => {
+        const caseProgress = rawProgressNotes.filter((p: any) => p.case_id === c.id);
+        const mappedProgress = caseProgress.map((p: any) => ({
+          date: p.date,
+          note: p.note,
+          author: p.author || 'Petugas Posko'
+        }));
+
+        return {
+          id: c.id,
+          title: c.title,
+          category: c.category,
+          status: (c.status || 'Baru') as 'Selesai' | 'Proses' | 'Baru',
+          date: c.date,
+          description: c.description,
+          reporter: c.reporter,
+          impact_level: (c.impact_level || 'Sedang') as 'Tinggi' | 'Sedang' | 'Rendah',
+          progressNotes: mappedProgress
+        };
+      });
 
       const mappingRefs: Reflection[] = filteredRefs.map((r: any) => ({
         id: r.id,

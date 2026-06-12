@@ -582,7 +582,7 @@ export const CasesList: React.FC<CasesListProps> = ({
                 <div className="flex justify-end pt-1">
                   <button
                     type="submit"
-                    className="flex items-center gap-1 px-3 py-1.5 bg-indigo-650 hover:bg-indigo-700 hover:shadow-2xs text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 hover:shadow-2xs text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shadow-sm"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Masukkan Catatan

@@ -502,8 +502,21 @@ export default function App() {
           reporter: updatedCase.reporter,
           impact_level: updatedCase.impact_level
         });
+
+        // Sinkronisasi data catatan perkembangan (progressNotes / case_progress_notes) ke Supabase
+        await supabase.from('case_progress_notes').delete().eq('case_id', updatedCase.id);
+        
+        if (updatedCase.progressNotes && updatedCase.progressNotes.length > 0) {
+          const payload = updatedCase.progressNotes.map(n => ({
+            case_id: updatedCase.id,
+            date: n.date,
+            note: n.note,
+            author: n.author || 'Petugas Posko'
+          }));
+          await supabase.from('case_progress_notes').insert(payload);
+        }
       } catch (err) {
-        console.error("Gagal memperbarui kasus di Supabase:", err);
+        console.error("Gagal memperbarui kasus beserta catatan perkembangannya di Supabase:", err);
       }
     }
   };
