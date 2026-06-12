@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Pemantauan Awak Kapal Perikanan",
+  "description": "Dashboard interaktif pemantauan pengorganisasian pekerja perikanan dan isu hak asasi manusia di Indonesia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
