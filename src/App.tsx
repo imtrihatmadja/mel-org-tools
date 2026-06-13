@@ -80,6 +80,23 @@ export default function App() {
       return;
     }
 
+    // Pembersihan URL Hash setelah Google login sukses dirujuk balik
+    if (window.location.hash && (window.location.hash.includes('access_token=') || window.location.hash.includes('id_token='))) {
+      // Beri jeda sangat singkat agar engine Supabase internal membaca hash token terlebih dahulu
+      setTimeout(() => {
+        try {
+          // Bersihkan hash dari URL address bar tanpa memicu refresh halaman
+          window.history.replaceState(
+            null, 
+            document.title, 
+            window.location.pathname + window.location.search
+          );
+        } catch (e) {
+          console.error("Gagal merapikan URL hash:", e);
+        }
+      }, 500);
+    }
+
     // 1. Cek sesi login saat inisialisasi aplikasi
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && session.user) {
