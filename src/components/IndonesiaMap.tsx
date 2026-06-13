@@ -215,15 +215,16 @@ export const IndonesiaMap: React.FC<IndonesiaMapProps> = ({
             if (!isHovered) return null;
 
             const { x, y } = getCoordinates(loc);
+            const isHighPin = y < 150; // upper half of the map viewport
             
             return (
               <div
                 key={loc.id}
-                className="absolute bg-white/95 backdrop-blur-md rounded-xl border border-slate-200 p-4 shadow-xl pointer-events-none z-10 w-64 text-sm font-sans flex flex-col gap-2 transition-all"
+                className="absolute bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 p-4 shadow-xl pointer-events-none z-30 w-65 text-sm font-sans flex flex-col gap-2 transition-all duration-200"
                 style={{
                   left: `${(x / 900) * 100}%`,
-                  top: `${(y / 360) * 100 - 130}%`,
-                  transform: 'translateX(-50%)',
+                  top: `${(y / 360) * 100}%`,
+                  transform: isHighPin ? 'translate(-50%, 14px)' : 'translate(-50%, calc(-100% - 14px))',
                 }}
               >
                 <div className="flex justify-between items-start border-b border-slate-100 pb-1.5">

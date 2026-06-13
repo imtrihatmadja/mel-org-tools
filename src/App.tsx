@@ -120,10 +120,32 @@ export default function App() {
     return locations.map(loc => {
       const hubBeneficiaries = beneficiaries.filter(b => b.locationId === loc.id);
       
-      // If there are beneficiaries registered/uploaded for this hub, we derive the stats dynamically
+      // Derive combined champions list from original champions and status-eligible beneficiaries
+      const beneficiaryChampions: Champion[] = hubBeneficiaries
+        .filter(b => b.category === 'Champion')
+        .map(b => ({
+          name: b.name,
+          role: b.notes?.trim() ? (b.notes.length > 35 ? b.notes.substring(0, 35) + '...' : b.notes) : 'Kader Pendamping (Penjangkauan)',
+          description: `Kader teridentifikasi dari data Penjangkauan (Asal: ${b.origin || 'Pelabuhan Lokal'}). ${b.notes ? `Catatan: ${b.notes}` : ''}`,
+          status: 'Aktif' as const,
+          phone: b.phone || ''
+        }));
+
+      const combinedChampions = [...loc.champions];
+      beneficiaryChampions.forEach(bc => {
+        const exists = combinedChampions.some(existing => existing.name.toLowerCase().trim() === bc.name.toLowerCase().trim());
+        if (!exists) {
+          combinedChampions.push(bc);
+        }
+      });
+
+      // Default counts or overridden dynamically if beneficiaries list exists
+      let finalStats = { ...loc.stats };
+
       if (hubBeneficiaries.length > 0) {
         const workersReached = hubBeneficiaries.length;
-        const championsCount = hubBeneficiaries.filter(b => b.category === 'Champion').length;
+        // Count total champions based on combined list length
+        const championsCount = combinedChampions.length;
         
         // Derive circleParticipants & organizationMembers proportional or based on contents
         const circleParticipantsCount = hubBeneficiaries.filter(b => 
@@ -141,18 +163,23 @@ export default function App() {
         const finalCircleParticipants = Math.max(Math.round(workersReached * 0.15) + circleParticipantsCount * 2, circleParticipantsCount);
         const finalOrganizationMembers = Math.max(Math.round(workersReached * 0.35) + organizationMembersCount, organizationMembersCount);
 
-        return {
-          ...loc,
-          stats: {
-            ...loc.stats,
-            workersReached,
-            championsCount,
-            circleParticipants: Math.min(workersReached, finalCircleParticipants),
-            organizationMembers: Math.min(workersReached, finalOrganizationMembers)
-          }
+        finalStats = {
+          ...loc.stats,
+          workersReached,
+          championsCount,
+          circleParticipants: Math.min(workersReached, finalCircleParticipants),
+          organizationMembers: Math.min(workersReached, finalOrganizationMembers)
         };
+      } else {
+        // Enforce update to championsCount in stats even if there are no general beneficiaries
+        finalStats.championsCount = combinedChampions.length;
       }
-      return loc;
+
+      return {
+        ...loc,
+        stats: finalStats,
+        champions: combinedChampions
+      };
     });
   }, [locations, beneficiaries]);
 
