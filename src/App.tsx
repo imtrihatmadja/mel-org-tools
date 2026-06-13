@@ -52,6 +52,15 @@ const PRESET_PORTS = [
   { name: 'Kendari', province: 'Sulawesi Tenggara', x: 62, y: 46 },
 ];
 
+const getIndonesianDate = () => {
+  const date = new Date();
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+};
+
 export default function App() {
   const [locations, setLocations] = useState<LocationData[]>(mockData.locations);
   const [nationalTrend, setNationalTrend] = useState<HistoricalTrend[]>(mockData.nationalTrend);
@@ -380,7 +389,7 @@ export default function App() {
         // Generate nice automated feedback milestone
         const actionText = actionType === 'edit' ? 'Koreksi/pembaharuan' : 'Entri peluruhan kegiatan baru';
         const newTimelineEvent = {
-          date: "11 Juni 2026",
+          date: getIndonesianDate(),
           title: `Data KPI Terperbarui`,
           description: `${actionText} berhasil ditransfer: ${
             updatedStats.workersReached > 0 ? `+${updatedStats.workersReached} pekerja, ` : ''
@@ -391,7 +400,7 @@ export default function App() {
         if (supabase) {
           supabase.from('timeline_events').insert({
             location_id: locationId,
-            date: "11 Juni 2026",
+            date: getIndonesianDate(),
             title: `Data KPI Terperbarui`,
             description: `${actionText} berhasil disinkronkan ke cloud.`,
             category: 'pencapaian'
@@ -689,7 +698,7 @@ export default function App() {
 
         // Prepend to timeline milestones
         const newTimelineEvent = {
-          date: "11 Juni 2026",
+          date: getIndonesianDate(),
           title: `Laporan Lapor Kasus #${newCode}`,
           description: `${caseData.title}. Dilaporkan oleh ${caseData.reporter}.`,
           category: 'kasus' as const
@@ -738,7 +747,7 @@ export default function App() {
 
         await supabase.from('timeline_events').insert({
           location_id: locId,
-          date: "11 Juni 2026",
+          date: getIndonesianDate(),
           title: `Laporan Lapor Kasus #${newCode}`,
           description: `${caseData.title}. Dilaporkan oleh ${caseData.reporter}.`,
           category: 'kasus'
@@ -972,42 +981,12 @@ export default function App() {
           name: org.name,
           type: org.type,
           established: org.established,
-          members: org.members,
-          pic_name: org.picName || '',
-          pic_phone: org.picPhone || '',
-          pic_socials: org.picSocials || ''
+          members: org.members
         });
 
         if (error) {
-          console.error("Gagal menambahkan organisasi dengan PIC ke Supabase:", error);
-          
-          // Fallback jika kolom pic_name atau sejenisnya tidak ditemukan di database target
-          const isMissingColumnError = error.message && (
-            error.message.includes("column") || 
-            error.message.includes("pic_name") || 
-            error.message.includes("pic_phone") || 
-            error.message.includes("pic_socials") || 
-            error.code === "42703"
-          );
-
-          if (isMissingColumnError) {
-            console.warn("Mencoba melakukan fallback menyimpan organisasi tanpa atribut PIC...");
-            const { error: fallbackError } = await supabase.from('organizations').insert({
-              location_id: locId,
-              name: org.name,
-              type: org.type,
-              established: org.established,
-              members: org.members
-            });
-            if (fallbackError) {
-              console.error("Fallback juga gagal:", fallbackError);
-              alert("Gagal menyimpan data organisasi ke Supabase: " + fallbackError.message);
-            } else {
-              console.log("Organisasi berhasil disimpan via fallback! (Tanpa record PIC)");
-            }
-          } else {
-            alert("Gagal menambahkan data organisasi ke Supabase: " + error.message);
-          }
+          console.error("Gagal menambahkan organisasi ke Supabase:", error);
+          alert("Gagal menambahkan data organisasi ke Supabase: " + error.message);
         } else {
           console.log("Organisasi berhasil ditambahkan ke Supabase.");
         }
@@ -1043,42 +1022,12 @@ export default function App() {
           name: updatedOrg.name,
           type: updatedOrg.type,
           established: updatedOrg.established,
-          members: updatedOrg.members,
-          pic_name: updatedOrg.picName || '',
-          pic_phone: updatedOrg.picPhone || '',
-          pic_socials: updatedOrg.picSocials || ''
+          members: updatedOrg.members
         }).match({ location_id: locId, name: oldOrgName });
 
         if (error) {
-          console.error("Gagal memperbarui organisasi dengan PIC di Supabase:", error);
-
-          // Fallback jika kolom pic_name atau sejenisnya tidak ditemukan di database target
-          const isMissingColumnError = error.message && (
-            error.message.includes("column") || 
-            error.message.includes("pic_name") || 
-            error.message.includes("pic_phone") || 
-            error.message.includes("pic_socials") || 
-            error.code === "42703"
-          );
-
-          if (isMissingColumnError) {
-            console.warn("Mencoba melakukan fallback memperbarui organisasi tanpa atribut PIC...");
-            const { error: fallbackError } = await supabase.from('organizations').update({
-              name: updatedOrg.name,
-              type: updatedOrg.type,
-              established: updatedOrg.established,
-              members: updatedOrg.members
-            }).match({ location_id: locId, name: oldOrgName });
-            
-            if (fallbackError) {
-              console.error("Fallback update juga gagal:", fallbackError);
-              alert("Gagal memperbarui data organisasi di Supabase: " + fallbackError.message);
-            } else {
-              console.log("Organisasi berhasil diperbarui via fallback! (Tanpa record PIC)");
-            }
-          } else {
-            alert("Gagal memperbarui data organisasi di Supabase: " + error.message);
-          }
+          console.error("Gagal memperbarui organisasi di Supabase:", error);
+          alert("Gagal memperbarui data organisasi di Supabase: " + error.message);
         } else {
           console.log("Organisasi berhasil diperbarui di Supabase.");
         }
@@ -1303,7 +1252,7 @@ export default function App() {
       reflections: [],
       timeline: [
         {
-          date: "11 Juni 2026",
+          date: getIndonesianDate(),
           title: "Inisiasi Hub Posko Baru",
           description: `Pembentukan posko pengaduan bersama dan pemantauan hak asasi awak kapal perikanan di pelabuhan ${addLocForm.name}, ${addLocForm.province}.`,
           category: "organisasi"
@@ -1326,7 +1275,7 @@ export default function App() {
 
         await supabase.from('timeline_events').insert({
           location_id: slugId,
-          date: "11 Juni 2026",
+          date: getIndonesianDate(),
           title: "Inisiasi Hub Posko Baru",
           description: `Pembentukan posko pengaduan bersama dan pemantauan hak asasi awak kapal perikanan di pelabuhan ${addLocForm.name}, ${addLocForm.province}.`,
           category: "organisasi"
