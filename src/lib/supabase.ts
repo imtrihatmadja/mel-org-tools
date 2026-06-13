@@ -122,7 +122,10 @@ export async function fetchAllDataFromSupabase(): Promise<{
         name: o.name,
         type: o.type,
         established: o.established || 2020,
-        members: o.members || 0
+        members: o.members || 0,
+        picName: o.pic_name || o.picName || '',
+        picPhone: o.pic_phone || o.picPhone || '',
+        picSocials: o.pic_socials || o.picSocials || ''
       }));
 
       const mappingChamps: Champion[] = filteredChamps.map((c: any) => ({

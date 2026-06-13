@@ -38,6 +38,9 @@ export interface WorkerOrganization {
   type: string;
   established: number;
   members: number;
+  picName?: string;
+  picPhone?: string;
+  picSocials?: string;
 }
 
 export interface Champion {

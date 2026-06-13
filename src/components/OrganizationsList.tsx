@@ -10,7 +10,10 @@ import {
   X,
   Users,
   Check,
-  AlertCircle
+  AlertCircle,
+  User,
+  Phone,
+  Share2
 } from 'lucide-react';
 
 interface OrganizationsProps {
@@ -36,7 +39,10 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
     name: '',
     type: 'Fasilitas Serikat Pekerja Mandiri',
     established: 2020,
-    members: 100
+    members: 100,
+    picName: '',
+    picPhone: '',
+    picSocials: ''
   });
 
   const handleOpenAdd = () => {
@@ -45,7 +51,10 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
       name: '',
       type: 'Fasilitas Serikat Pekerja Mandiri',
       established: new Date().getFullYear() - 2,
-      members: 50
+      members: 50,
+      picName: '',
+      picPhone: '',
+      picSocials: ''
     });
     setIsModalOpen(true);
   };
@@ -56,7 +65,10 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
       name: org.name,
       type: org.type,
       established: org.established,
-      members: org.members
+      members: org.members,
+      picName: org.picName || '',
+      picPhone: org.picPhone || '',
+      picSocials: org.picSocials || ''
     });
     setIsModalOpen(true);
   };
@@ -69,7 +81,10 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
       name: formState.name.trim(),
       type: formState.type.trim(),
       established: Number(formState.established) || 2020,
-      members: Number(formState.members) || 0
+      members: Number(formState.members) || 0,
+      picName: formState.picName.trim() || undefined,
+      picPhone: formState.picPhone.trim() || undefined,
+      picSocials: formState.picSocials.trim() || undefined
     };
 
     if (editingIndex !== null) {
@@ -176,6 +191,33 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {(org.picName || org.picPhone || org.picSocials) && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 bg-slate-50/50 -mx-4 -mb-4 px-4 pb-4 rounded-b-xl flex flex-col gap-1.5 text-[11px] text-slate-650">
+                    {org.picName && (
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="font-medium text-slate-700">PIC: <strong className="text-slate-905">{org.picName}</strong></span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {org.picPhone && (
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="font-mono text-slate-600 font-medium">{org.picPhone}</span>
+                        </div>
+                      )}
+                      {org.picSocials && (
+                        <div className="flex items-center gap-1.5">
+                          <Share2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="text-slate-600 bg-white border border-slate-200/60 px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider truncate max-w-[150px]" title={org.picSocials}>
+                            {org.picSocials}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))
@@ -247,6 +289,45 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
                     onChange={(e) => setFormState({ ...formState, members: Number(e.target.value) })}
                     className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800 bg-slate-50 focus:bg-white"
                   />
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-3.5 space-y-3">
+                <span className="block text-[10px] font-extrabold text-indigo-700 uppercase tracking-widest">Informasi Narahubung (PIC)</span>
+                
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nama Lengkap PIC</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Budi Santoso"
+                    value={formState.picName}
+                    onChange={(e) => setFormState({ ...formState, picName: e.target.value })}
+                    className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800 bg-slate-50 focus:bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">No. Telepon / WhatsApp</label>
+                    <input
+                      type="text"
+                      placeholder="Misal: 0812-3456-7890"
+                      value={formState.picPhone}
+                      onChange={(e) => setFormState({ ...formState, picPhone: e.target.value })}
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800 bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Media Sosial / Website</label>
+                    <input
+                      type="text"
+                      placeholder="Misal: @sp_bali atau fb.com/sp"
+                      value={formState.picSocials}
+                      onChange={(e) => setFormState({ ...formState, picSocials: e.target.value })}
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-100 text-slate-800 bg-slate-50 focus:bg-white"
+                    />
+                  </div>
                 </div>
               </div>
 

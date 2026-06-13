@@ -904,7 +904,10 @@ export default function App() {
           name: org.name,
           type: org.type,
           established: org.established,
-          members: org.members
+          members: org.members,
+          pic_name: org.picName || '',
+          pic_phone: org.picPhone || '',
+          pic_socials: org.picSocials || ''
         });
       } catch (err) {
         console.error("Gagal menambahkan organisasi ke Supabase:", err);
@@ -938,7 +941,10 @@ export default function App() {
           name: updatedOrg.name,
           type: updatedOrg.type,
           established: updatedOrg.established,
-          members: updatedOrg.members
+          members: updatedOrg.members,
+          pic_name: updatedOrg.picName || '',
+          pic_phone: updatedOrg.picPhone || '',
+          pic_socials: updatedOrg.picSocials || ''
         }).match({ location_id: locId, name: oldOrgName });
       } catch (err) {
         console.error("Gagal memperbarui organisasi di Supabase:", err);
