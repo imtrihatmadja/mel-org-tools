@@ -22,6 +22,7 @@ interface ReflectionsListProps {
   onDeleteReflection?: (refId: string) => void;
   forceOpenAddModal?: boolean;
   onResetForceAdd?: () => void;
+  isSuperAdmin?: boolean;
 }
 
 export const ReflectionsList: React.FC<ReflectionsListProps> = ({
@@ -30,7 +31,8 @@ export const ReflectionsList: React.FC<ReflectionsListProps> = ({
   onUpdateReflection,
   onDeleteReflection,
   forceOpenAddModal = false,
-  onResetForceAdd
+  onResetForceAdd,
+  isSuperAdmin = false
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
@@ -100,6 +102,10 @@ export const ReflectionsList: React.FC<ReflectionsListProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      alert("Akses Terkunci: Maaf, Anda saat ini mengakses dalam Mode Guest. Silakan login sebagai Superadmin.");
+      return;
+    }
     if (!refForm.title || !refForm.content || !refForm.author) {
       alert("Harap lengkapi semua isian refleksi.");
       return;
@@ -162,13 +168,15 @@ export const ReflectionsList: React.FC<ReflectionsListProps> = ({
         </div>
 
         {/* Add Reflection Button inside Header */}
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-150 border border-amber-200 rounded-lg shadow-2xs transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5 text-amber-600" />
-          Refleksi Baru
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-150 border border-amber-200 rounded-lg shadow-2xs transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 text-amber-600" />
+            Refleksi Baru
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -243,24 +251,26 @@ export const ReflectionsList: React.FC<ReflectionsListProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => handleOpenEdit(ref, e)}
-                    className="p-1 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded transition-colors cursor-pointer"
-                    title="Sunting Refleksi"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  {onDeleteReflection && (
+                {isSuperAdmin && (
+                  <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={(e) => handleDelete(ref.id, e)}
-                      className="p-1 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded transition-colors cursor-pointer"
-                      title="Hapus Refleksi"
+                      onClick={(e) => handleOpenEdit(ref, e)}
+                      className="p-1 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded transition-colors cursor-pointer"
+                      title="Sunting Refleksi"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Edit2 className="w-3 h-3" />
                     </button>
-                  )}
-                </div>
+                    {onDeleteReflection && (
+                      <button
+                        onClick={(e) => handleDelete(ref.id, e)}
+                        className="p-1 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                        title="Hapus Refleksi"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))

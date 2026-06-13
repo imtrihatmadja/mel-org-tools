@@ -27,6 +27,7 @@ interface NationalReflectionsListProps {
   onDeleteReflection: (locId: string, refId: string) => void;
   locationsList: { id: string; name: string }[];
   onSelectLocation?: (id: string) => void;
+  isSuperAdmin?: boolean;
 }
 
 export const NationalReflectionsList: React.FC<NationalReflectionsListProps> = ({
@@ -35,7 +36,8 @@ export const NationalReflectionsList: React.FC<NationalReflectionsListProps> = (
   onUpdateReflection,
   onDeleteReflection,
   locationsList = [],
-  onSelectLocation
+  onSelectLocation,
+  isSuperAdmin = false
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("Semua");
@@ -101,6 +103,10 @@ export const NationalReflectionsList: React.FC<NationalReflectionsListProps> = (
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      setIsModalOpen(false);
+      return;
+    }
     if (!refForm.title || !refForm.content || !refForm.author || !selectedLocId) {
       alert("Harap lengkapi semua isian.");
       return;
@@ -164,13 +170,15 @@ export const NationalReflectionsList: React.FC<NationalReflectionsListProps> = (
         </div>
 
         {/* Add Reflection Button */}
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg shadow-2xs transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5 text-amber-600" />
-          Refleksi Wilayah Baru
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg shadow-2xs transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 text-amber-600" />
+            Refleksi Wilayah Baru
+          </button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -311,19 +319,21 @@ export const NationalReflectionsList: React.FC<NationalReflectionsListProps> = (
                       <button
                         onClick={(e) => handleOpenEdit(ref, e)}
                         className="p-1 px-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-bold flex items-center gap-1 transition-colors cursor-pointer text-[10px]"
-                        title="Sunting Refleksi"
+                        title={isSuperAdmin ? "Sunting Refleksi" : "Liat Catatan Refleksi"}
                       >
                         <Edit2 className="w-3 h-3 text-blue-500" />
-                        Kelola
+                        {isSuperAdmin ? 'Kelola' : 'Buka Detail'}
                       </button>
 
-                      <button
-                        onClick={(e) => handleDeleteTrigger(ref, e)}
-                        className="p-1.5 rounded-lg border border-red-150 text-slate-400 hover:bg-red-50 hover:text-rose-600 transition-colors cursor-pointer"
-                        title="Hapus Refleksi"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                      </button>
+                      {isSuperAdmin && (
+                        <button
+                          onClick={(e) => handleDeleteTrigger(ref, e)}
+                          className="p-1.5 rounded-lg border border-red-150 text-slate-400 hover:bg-red-50 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Hapus Refleksi"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -357,77 +367,79 @@ export const NationalReflectionsList: React.FC<NationalReflectionsListProps> = (
             {/* Modal Form */}
             <form onSubmit={handleSubmit} className="p-4 space-y-4 text-xs font-medium max-h-[80vh] overflow-y-auto">
               
-              {/* Target Location / Project Pin selection */}
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Posko Wilayah Sasaran</label>
-                <select
-                  disabled={editingRef !== null}
-                  value={selectedLocId}
-                  onChange={(e) => setSelectedLocId(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 cursor-pointer disabled:opacity-50"
-                >
-                  {locationsList.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      Pelabuhan Perikanan {loc.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <fieldset disabled={!isSuperAdmin} className="space-y-4">
+                {/* Target Location / Project Pin selection */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Posko Wilayah Sasaran</label>
+                  <select
+                    disabled={editingRef !== null}
+                    value={selectedLocId}
+                    onChange={(e) => setSelectedLocId(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 cursor-pointer disabled:opacity-50"
+                  >
+                    {locationsList.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        Pelabuhan Perikanan {loc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Category */}
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Kategori Temuan</label>
-                <select
-                  value={refForm.category}
-                  onChange={(e) => setRefForm(prev => ({ ...prev, category: e.target.value as Reflection['category'] }))}
-                  className="bg-slate-50 border border-slate-200 rounded-lg text-xs p-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 cursor-pointer"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                {/* Category */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Kategori Temuan</label>
+                  <select
+                    value={refForm.category}
+                    onChange={(e) => setRefForm(prev => ({ ...prev, category: e.target.value as Reflection['category'] }))}
+                    className="bg-slate-50 border border-slate-200 rounded-lg text-xs p-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 cursor-pointer"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Title */}
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Tema / Judul Evaluasi Lapangan</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ketikkan judul refleksi yang ringkas..."
-                  value={refForm.title}
-                  onChange={(e) => setRefForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans text-slate-800"
-                />
-              </div>
+                {/* Title */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Tema / Judul Evaluasi Lapangan</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ketikkan judul refleksi yang ringkas..."
+                    value={refForm.title}
+                    onChange={(e) => setRefForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans text-slate-800"
+                  />
+                </div>
 
-              {/* Author */}
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Penyusun / Fasilitator Lapangan</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ketik nama koordinator lapangan..."
-                  value={refForm.author}
-                  onChange={(e) => setRefForm(prev => ({ ...prev, author: e.target.value }))}
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans text-slate-800"
-                />
-              </div>
+                {/* Author */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Penyusun / Fasilitator Lapangan</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ketik nama koordinator lapangan..."
+                    value={refForm.author}
+                    onChange={(e) => setRefForm(prev => ({ ...prev, author: e.target.value }))}
+                    className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans text-slate-800"
+                  />
+                </div>
 
-              {/* Content text */}
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Narasi Catatan Pelajaran Penting</label>
-                <textarea
-                  required
-                  rows={4}
-                  placeholder="Tuliskan detail refleksi, hambatan, pelajaran berharga serta solusi praktis pendampingan..."
-                  value={refForm.content}
-                  onChange={(e) => setRefForm(prev => ({ ...prev, content: e.target.value }))}
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-sans text-slate-800"
-                />
-              </div>
+                {/* Content text */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">Narasi Catatan Pelajaran Penting</label>
+                  <textarea
+                    required
+                    rows={4}
+                    placeholder="Tuliskan detail refleksi, hambatan, pelajaran berharga serta solusi praktis pendampingan..."
+                    value={refForm.content}
+                    onChange={(e) => setRefForm(prev => ({ ...prev, content: e.target.value }))}
+                    className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-sans text-slate-800"
+                  />
+                </div>
+              </fieldset>
 
               {/* Form Actions */}
               <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-2">
@@ -436,14 +448,16 @@ export const NationalReflectionsList: React.FC<NationalReflectionsListProps> = (
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-xs font-semibold cursor-pointer"
                 >
-                  Batal
+                  {isSuperAdmin ? 'Batal' : 'Tutup Detail'}
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-amber-600 border border-amber-700 text-white hover:bg-amber-700 rounded-lg transition-all text-xs font-bold cursor-pointer"
-                >
-                  {editingRef ? 'Simpan Perubahan' : 'Terbitkan Catatan'}
-                </button>
+                {isSuperAdmin && (
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-amber-600 border border-amber-700 text-white hover:bg-amber-700 rounded-lg transition-all text-xs font-bold cursor-pointer"
+                  >
+                    {editingRef ? 'Simpan Perubahan' : 'Terbitkan Catatan'}
+                  </button>
+                )}
               </div>
             </form>
           </div>

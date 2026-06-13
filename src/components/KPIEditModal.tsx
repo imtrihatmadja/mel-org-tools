@@ -20,6 +20,7 @@ interface KPIEditModalProps {
   locations: LocationData[];
   onSave: (locationId: string, updatedStats: LocationStats, actionType: 'edit' | 'tambah') => void;
   initialLocationId: string | null;
+  isSuperAdmin?: boolean;
 }
 
 export const KPIEditModal: React.FC<KPIEditModalProps> = ({
@@ -27,7 +28,8 @@ export const KPIEditModal: React.FC<KPIEditModalProps> = ({
   onClose,
   locations,
   onSave,
-  initialLocationId
+  initialLocationId,
+  isSuperAdmin = false
 }) => {
   const [selectedLocId, setSelectedLocId] = useState<string>('');
   const [method, setMethod] = useState<'edit' | 'tambah'>('edit');
@@ -85,6 +87,10 @@ export const KPIEditModal: React.FC<KPIEditModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      onClose();
+      return;
+    }
     setErrorMessage(null);
 
     // Parse values to numbers
@@ -238,7 +244,7 @@ export const KPIEditModal: React.FC<KPIEditModalProps> = ({
           )}
 
           {/* Form input fields */}
-          <div className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
+          <fieldset disabled={!isSuperAdmin} className="space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
             
             {/* Workers Reached */}
             <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2.5">
@@ -435,8 +441,7 @@ export const KPIEditModal: React.FC<KPIEditModalProps> = ({
                 )}
               </div>
             </div>
-
-          </div>
+          </fieldset>
 
           {/* Dialog Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
@@ -445,15 +450,17 @@ export const KPIEditModal: React.FC<KPIEditModalProps> = ({
               onClick={onClose}
               className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg px-4 py-2 text-xs font-bold cursor-pointer transition-colors"
             >
-              Batalkan
+              {isSuperAdmin ? 'Batalkan' : 'Tutup Detail'}
             </button>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 hover:shadow-xs transition-all cursor-pointer shadow-xs"
-            >
-              <Save className="w-4 h-4" />
-              Simpan Perubahan
-            </button>
+            {isSuperAdmin && (
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 hover:shadow-xs transition-all cursor-pointer shadow-xs"
+              >
+                <Save className="w-4 h-4" />
+                Simpan Perubahan
+              </button>
+            )}
           </div>
 
         </form>

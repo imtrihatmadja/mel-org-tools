@@ -23,6 +23,7 @@ interface CasesListProps {
   onUpdateCase?: (locId: string, updatedCase: Case) => void;
   onDeleteCase?: (locId: string, caseId: string) => void;
   defaultLocationId?: string; // fallback if case has no locationId bound
+  isSuperAdmin?: boolean;
 }
 
 export const CasesList: React.FC<CasesListProps> = ({
@@ -30,7 +31,8 @@ export const CasesList: React.FC<CasesListProps> = ({
   onSelectCase,
   onUpdateCase,
   onDeleteCase,
-  defaultLocationId
+  defaultLocationId,
+  isSuperAdmin = false
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("Semua");
@@ -339,13 +341,13 @@ export const CasesList: React.FC<CasesListProps> = ({
                       <button
                         onClick={(e) => handleOpenEditModal(c, e)}
                         className="p-1 px-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer text-[10px]"
-                        title="Sunting Kasus & Log Perkembangan"
+                        title={isSuperAdmin ? "Sunting Kasus & Log Perkembangan" : "Buka Catatan & Detail Kasus"}
                       >
                         <Edit2 className="w-3 h-3 text-blue-500" />
-                        Kelola
+                        {isSuperAdmin ? "Kelola" : "Buka Detail"}
                       </button>
                       
-                      {onDeleteCase && (
+                      {onDeleteCase && isSuperAdmin && (
                         <button
                           onClick={(e) => handleDeleteTrigger(c, e)}
                           className="p-1.5 rounded-lg border border-red-150 text-slate-400 hover:bg-red-50 hover:text-rose-600 transition-colors cursor-pointer"
@@ -397,9 +399,10 @@ export const CasesList: React.FC<CasesListProps> = ({
                   <input
                     type="text"
                     required
+                    disabled={!isSuperAdmin}
                     value={caseForm.title}
                     onChange={(e) => setCaseForm({ ...caseForm, title: e.target.value })}
-                    className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 font-sans text-slate-800 bg-slate-50 focus:bg-white"
+                    className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 font-sans text-slate-800 bg-slate-50 focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -408,9 +411,10 @@ export const CasesList: React.FC<CasesListProps> = ({
                   <div>
                     <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Status Advokasi *</label>
                     <select
+                      disabled={!isSuperAdmin}
                       value={caseForm.status}
                       onChange={(e) => setCaseForm({ ...caseForm, status: e.target.value as 'Selesai' | 'Proses' | 'Baru' })}
-                      className="w-full text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white text-slate-800 cursor-pointer"
+                      className="w-full text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white text-slate-800 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <option value="Baru">Laporan Baru</option>
                       <option value="Proses">Sedang Diproses</option>
@@ -421,9 +425,10 @@ export const CasesList: React.FC<CasesListProps> = ({
                   <div>
                     <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Tingkat Dampak *</label>
                     <select
+                      disabled={!isSuperAdmin}
                       value={caseForm.impact_level}
                       onChange={(e) => setCaseForm({ ...caseForm, impact_level: e.target.value as 'Tinggi' | 'Sedang' | 'Rendah' })}
-                      className="w-full text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white text-slate-800 cursor-pointer"
+                      className="w-full text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white text-slate-800 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <option value="Tinggi">Dampak Tinggi (Sangat Parah)</option>
                       <option value="Sedang">Dampak Sedang</option>
@@ -439,10 +444,11 @@ export const CasesList: React.FC<CasesListProps> = ({
                     <input
                       type="text"
                       required
+                      disabled={!isSuperAdmin}
                       value={caseForm.category}
                       onChange={(e) => setCaseForm({ ...caseForm, category: e.target.value })}
                       placeholder="Misal: Pelanggaran K3"
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 text-slate-800 bg-slate-50 focus:bg-white"
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 text-slate-800 bg-slate-50 focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -451,9 +457,10 @@ export const CasesList: React.FC<CasesListProps> = ({
                     <input
                       type="text"
                       required
+                      disabled={!isSuperAdmin}
                       value={caseForm.reporter}
                       onChange={(e) => setCaseForm({ ...caseForm, reporter: e.target.value })}
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 text-slate-800 bg-slate-50 focus:bg-white"
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 text-slate-800 bg-slate-50 focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -463,10 +470,11 @@ export const CasesList: React.FC<CasesListProps> = ({
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Deskripsi & Kronologis Kasus *</label>
                   <textarea
                     required
+                    disabled={!isSuperAdmin}
                     value={caseForm.description}
                     onChange={(e) => setCaseForm({ ...caseForm, description: e.target.value })}
                     rows={4}
-                    className="w-full text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 font-sans text-slate-700 bg-slate-50' focus:bg-white"
+                    className="w-full text-xs font-medium border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 font-sans text-slate-700 bg-slate-50 focus:bg-white resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -483,13 +491,19 @@ export const CasesList: React.FC<CasesListProps> = ({
                     >
                       Batal
                     </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-xs"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Simpan Perubahan
-                    </button>
+                    {isSuperAdmin ? (
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-xs"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Simpan Perubahan
+                      </button>
+                    ) : (
+                      <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5 font-bold flex items-center gap-1">
+                        <span>🔒 Mode Guest (Read-Only)</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -553,42 +567,52 @@ export const CasesList: React.FC<CasesListProps> = ({
               </div>
 
               {/* Add Progress note Form */}
-              <form onSubmit={handleAddProgressNote} className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs shrink-0 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Entri Log Perkembangan Baru</span>
-                  
-                  {/* Author identifier input */}
-                  <input
-                    type="text"
-                    required
-                    placeholder="Pelaksana (Misal: Koordinator)"
-                    value={newNoteAuthor}
-                    onChange={(e) => setNewNoteAuthor(e.target.value)}
-                    className="text-[10px] font-bold border-b border-transparent hover:border-slate-300 focus:border-blue-600 focus:outline-none transition-all px-1 py-0.5 text-right text-indigo-700 w-36 bg-slate-50 hover:bg-slate-100 rounded focus:bg-white"
-                  />
-                </div>
+              {isSuperAdmin ? (
+                <form onSubmit={handleAddProgressNote} className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs shrink-0 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Entri Log Perkembangan Baru</span>
+                    
+                    {/* Author identifier input */}
+                    <input
+                      type="text"
+                      required
+                      placeholder="Pelaksana (Misal: Koordinator)"
+                      value={newNoteAuthor}
+                      onChange={(e) => setNewNoteAuthor(e.target.value)}
+                      className="text-[10px] font-bold border-b border-transparent hover:border-slate-300 focus:border-blue-600 focus:outline-none transition-all px-1 py-0.5 text-right text-indigo-700 w-36 bg-slate-50 hover:bg-slate-100 rounded focus:bg-white"
+                    />
+                  </div>
 
-                <div className="relative">
-                  <textarea
-                    required
-                    rows={2}
-                    placeholder="Tulis langkah pendampingan, mediasi, atau pencairan hak yang baru terlaksana..."
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    className="w-full text-xs font-semibold focus:font-medium border border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all font-sans text-slate-700 bg-slate-50 focus:bg-white resize-none"
-                  />
-                </div>
+                  <div className="relative">
+                    <textarea
+                      required
+                      rows={2}
+                      placeholder="Tulis langkah pendampingan, mediasi, atau pencairan hak yang baru terlaksana..."
+                      value={newNoteText}
+                      onChange={(e) => setNewNoteText(e.target.value)}
+                      className="w-full text-xs font-semibold focus:font-medium border border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all font-sans text-slate-700 bg-slate-50 focus:bg-white resize-none"
+                    />
+                  </div>
 
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 hover:shadow-2xs text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Masukkan Catatan
-                  </button>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 hover:shadow-2xs text-white text-[11px] font-bold rounded-lg transition-all cursor-pointer shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Masukkan Catatan
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="bg-slate-100 border border-slate-200 text-slate-500 rounded-xl p-3.5 text-center text-xs flex flex-col items-center gap-2 font-medium shrink-0 justify-center">
+                  <AlertCircle className="w-5 h-5 text-slate-400 shrink-0" />
+                  <div>
+                    <span className="font-extrabold text-slate-700 block">Riwayat Terkunci</span>
+                    <span className="text-[10px] block text-slate-400 mt-0.5">Penambahan langkah advokasi lapangan dinonaktifkan dalam Mode Guest.</span>
+                  </div>
                 </div>
-              </form>
+              )}
 
             </div>
 

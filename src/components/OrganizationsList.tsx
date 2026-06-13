@@ -21,13 +21,15 @@ interface OrganizationsProps {
   onAddOrganization: (org: WorkerOrganization) => void;
   onUpdateOrganization: (index: number, org: WorkerOrganization) => void;
   onDeleteOrganization: (index: number) => void;
+  isSuperAdmin?: boolean;
 }
 
 export const OrganizationsList: React.FC<OrganizationsProps> = ({
   organizations = [],
   onAddOrganization,
   onUpdateOrganization,
-  onDeleteOrganization
+  onDeleteOrganization,
+  isSuperAdmin = false
 }) => {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,6 +77,10 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      alert("Akses Terkunci: Maaf, Anda saat ini mengakses dalam Mode Guest. Silakan login sebagai Superadmin.");
+      return;
+    }
     if (!formState.name.trim()) return;
 
     const orgData: WorkerOrganization = {
@@ -122,13 +128,15 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
           <span className="text-[10px] bg-slate-100 text-slate-650 px-2.5 py-1 rounded-full font-bold">
             {organizations.length} Terdaftar
           </span>
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 font-bold text-white text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Tambah Serikat
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={handleOpenAdd}
+              className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 font-bold text-white text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Tambah Serikat
+            </button>
+          )}
         </div>
       </div>
 
@@ -155,22 +163,24 @@ export const OrganizationsList: React.FC<OrganizationsProps> = ({
                     </span>
                     
                     {/* Action buttons */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenEdit(org, index)}
-                        className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                        title="Edit Serikat"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => setDeletingIndex(index)}
-                        className="p-1 rounded text-slate-400 hover:text-red-650 hover:bg-slate-100 transition-colors cursor-pointer"
-                        title="Hapus Serikat"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
+                    {isSuperAdmin && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(org, index)}
+                          className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Edit Serikat"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingIndex(index)}
+                          className="p-1 rounded text-slate-400 hover:text-red-650 hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Hapus Serikat"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 

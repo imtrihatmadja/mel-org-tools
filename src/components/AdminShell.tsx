@@ -20,7 +20,9 @@ import {
   Database,
   Plus,
   LogIn,
-  Chrome
+  Chrome,
+  Key,
+  Lock
 } from 'lucide-react';
 
 interface AdminShellProps {
@@ -34,6 +36,7 @@ interface AdminShellProps {
   onOpenAddLocation?: () => void;
   isLoggedIn?: boolean;
   onLoginToggle?: () => void;
+  onChangePassword?: () => void;
 }
 
 export const AdminShell: React.FC<AdminShellProps> = ({
@@ -46,7 +49,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({
   locations = [],
   onOpenAddLocation,
   isLoggedIn = true,
-  onLoginToggle
+  onLoginToggle,
+  onChangePassword
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,7 +145,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({
             );
           })}
 
-          {onOpenAddLocation && (
+          {isLoggedIn && onOpenAddLocation && (
             <button
               onClick={() => {
                 onOpenAddLocation();
@@ -236,13 +240,24 @@ export const AdminShell: React.FC<AdminShellProps> = ({
 
           {/* Social Google Connection Status Button triggers simulation of auth state toggle */}
           {isLoggedIn ? (
-            <button
-              onClick={onLoginToggle}
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-1.5 text-[11px] font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-250 rounded-lg shadow-2xs hover:shadow-xs transition-all cursor-pointer bg-white"
-            >
-              <LogOut className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-500" />
-              Keluar Sesi (Logout)
-            </button>
+            <div className="flex flex-col gap-1.5 w-full">
+              {onChangePassword && (
+                <button
+                  onClick={onChangePassword}
+                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg shadow-2xs hover:shadow-xs transition-all cursor-pointer bg-white"
+                >
+                  <Key className="w-3.5 h-3.5 text-indigo-500" />
+                  Ganti Password Admin
+                </button>
+              )}
+              <button
+                onClick={onLoginToggle}
+                className="w-full inline-flex items-center justify-center gap-2 px-3 py-1.5 text-[11px] font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-250 rounded-lg shadow-2xs hover:shadow-xs transition-all cursor-pointer bg-white"
+              >
+                <LogOut className="w-3.5 h-3.5 text-slate-400" />
+                Keluar Sesi (Logout)
+              </button>
+            </div>
           ) : (
             <button
               onClick={onLoginToggle}

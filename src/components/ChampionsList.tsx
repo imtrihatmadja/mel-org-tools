@@ -21,13 +21,15 @@ interface ChampionsProps {
   onAddChampion: (champ: Champion) => void;
   onUpdateChampion: (index: number, champ: Champion) => void;
   onDeleteChampion: (index: number) => void;
+  isSuperAdmin?: boolean;
 }
 
 export const ChampionsList: React.FC<ChampionsProps> = ({
   champions = [],
   onAddChampion,
   onUpdateChampion,
-  onDeleteChampion
+  onDeleteChampion,
+  isSuperAdmin = false
 }) => {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,6 +71,10 @@ export const ChampionsList: React.FC<ChampionsProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      alert("Akses Terkunci: Maaf, Anda saat ini mengakses dalam Mode Guest. Silakan login sebagai Superadmin.");
+      return;
+    }
     if (!formState.name.trim()) return;
 
     const champData: Champion = {
@@ -114,13 +120,15 @@ export const ChampionsList: React.FC<ChampionsProps> = ({
           <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-bold">
             {champions.length} Aktif
           </span>
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 font-bold text-white text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Tambah Kader
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={handleOpenAdd}
+              className="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 font-bold text-white text-[10px] sm:text-xs px-2.5 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Tambah Kader
+            </button>
+          )}
         </div>
       </div>
 
@@ -155,22 +163,24 @@ export const ChampionsList: React.FC<ChampionsProps> = ({
                   </span>
                   
                   {/* Action controls inside badge level */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => handleOpenEdit(champ, index)}
-                      className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                      title="Edit Kader"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => setDeletingIndex(index)}
-                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                      title="Hapus Kader"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {isSuperAdmin && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleOpenEdit(champ, index)}
+                        className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Edit Kader"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setDeletingIndex(index)}
+                        className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Hapus Kader"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 

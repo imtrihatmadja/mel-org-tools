@@ -30,7 +30,13 @@ import {
   ListFilter,
   Plus,
   X,
-  MapPin
+  MapPin,
+  Edit,
+  Trash2,
+  ShieldAlert,
+  Lock,
+  Key,
+  Chrome
 } from 'lucide-react';
 
 const PRESET_PORTS = [
@@ -52,9 +58,54 @@ export default function App() {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [yearFilter, setYearFilter] = useState<number>(2026);
   const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
   const [forceAddReflection, setForceAddReflection] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState('admin@dfw.or.id');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authPasswordInput, setAuthPasswordInput] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [superadminPassword, setSuperadminPassword] = useState(() => {
+    return localStorage.getItem('DFW_SUPERADMIN_PASSWORD') || 'admin123';
+  });
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
   const [isLoadingSupabase, setIsLoadingSupabase] = useState(false);
+
+  // Integrasi Autentikasi Real-Time dengan Supabase Cloud (Google Login)
+  useEffect(() => {
+    if (!supabase) {
+      // Jika offline, set ke admin@dfw.or.id secara default saat login true
+      setCurrentUserEmail('admin@dfw.or.id');
+      return;
+    }
+
+    // 1. Cek sesi login saat inisialisasi aplikasi
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && session.user) {
+        setIsLoggedIn(true);
+        setCurrentUserEmail(session.user.email || 'admin@dfw.or.id');
+      } else {
+        setIsLoggedIn(false);
+        setCurrentUserEmail('Mode Guest / Tamu');
+      }
+    });
+
+    // 2. Dengarkan perubahan state autentikasi dari Supabase secara real-time
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && session.user) {
+        setIsLoggedIn(true);
+        setCurrentUserEmail(session.user.email || 'admin@dfw.or.id');
+      } else {
+        setIsLoggedIn(false);
+        setCurrentUserEmail('Mode Guest / Tamu');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Mekanisme Pemuatan Dinamis Data dari Database Supabase Anda!
   useEffect(() => {
@@ -981,6 +1032,105 @@ export default function App() {
     }
   };
 
+  const handleLoginToggle = async () => {
+    if (isLoggedIn) {
+      if (supabase) {
+        try {
+          await supabase.auth.signOut();
+        } catch (err) {
+          console.error("Gagal signOut dari Supabase:", err);
+        }
+      }
+      setIsLoggedIn(false);
+      setIsChangePasswordOpen(false);
+      setCurrentUserEmail('Mode Guest / Tamu');
+    } else {
+      setAuthPasswordInput('');
+      setAuthError('');
+      setIsAuthModalOpen(true);
+    }
+  };
+
+  const handleAuthSubmit = () => {
+    if (authPasswordInput === superadminPassword) {
+      setIsLoggedIn(true);
+      setIsAuthModalOpen(false);
+      setAuthPasswordInput('');
+    } else {
+      setAuthError('Password salah! Silakan coba lagi.');
+    }
+  };
+
+  const handleChangePasswordSubmit = () => {
+    if (!newPasswordInput.trim()) {
+      alert('Password tidak boleh kosong!');
+      return;
+    }
+    localStorage.setItem('DFW_SUPERADMIN_PASSWORD', newPasswordInput.trim());
+    setSuperadminPassword(newPasswordInput.trim());
+    setIsChangePasswordOpen(false);
+    setNewPasswordInput('');
+    alert('Password superadmin berhasil diperbarui!');
+  };
+
+  const closeAddLocationModal = () => {
+    setIsAddLocationModalOpen(false);
+    setEditingLocationId(null);
+    setAddLocForm({
+      preset: '',
+      name: '',
+      province: '',
+      x: 50,
+      y: 50,
+      workersReached: 0,
+      activeLearningCircles: 0,
+      circleParticipants: 0,
+      championsCount: 0,
+      organizationMembers: 0,
+      casesCount: 0,
+      casesSolved: 0
+    });
+  };
+
+  const startEditLocation = (loc: LocationData) => {
+    setEditingLocationId(loc.id);
+    setAddLocForm({
+      preset: '',
+      name: loc.name,
+      province: loc.province,
+      x: loc.coordinates?.x ?? 50,
+      y: loc.coordinates?.y ?? 50,
+      workersReached: loc.stats.workersReached,
+      activeLearningCircles: loc.stats.activeLearningCircles,
+      circleParticipants: loc.stats.circleParticipants,
+      championsCount: loc.stats.championsCount,
+      organizationMembers: loc.stats.organizationMembers,
+      casesCount: loc.stats.casesCount,
+      casesSolved: loc.stats.casesSolved
+    });
+    setIsAddLocationModalOpen(true);
+  };
+
+  const handleDeleteLocation = async (locId: string) => {
+    const loc = locations.find(l => l.id === locId);
+    if (!loc) return;
+
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus wilayah "${loc.name}"? Semua data kasus, kader, serikat, dan capaian di wilayah ini akan dihapus secara permanen.`)) {
+      return;
+    }
+
+    setLocations(prev => prev.filter(l => l.id !== locId));
+    setSelectedLocationId(null);
+
+    if (supabase) {
+      try {
+        await supabase.from('locations').delete().eq('id', locId);
+      } catch (err) {
+        console.error("Gagal menghapus lokasi dari Supabase:", err);
+      }
+    }
+  };
+
   const handleAddNewLocation = async () => {
     if (!addLocForm.name.trim()) {
       alert("Silakan masukkan nama Pelabuhan/Hub!");
@@ -988,6 +1138,66 @@ export default function App() {
     }
     if (!addLocForm.province.trim()) {
       alert("Silakan masukkan nama Provinsi!");
+      return;
+    }
+
+    if (editingLocationId) {
+      // Editing mode
+      setLocations(prev => prev.map(loc => {
+        if (loc.id === editingLocationId) {
+          return {
+            ...loc,
+            name: addLocForm.name,
+            province: addLocForm.province,
+            coordinates: { x: Number(addLocForm.x), y: Number(addLocForm.y) },
+            stats: {
+              ...loc.stats,
+              workersReached: Number(addLocForm.workersReached) || 0,
+              activeLearningCircles: Number(addLocForm.activeLearningCircles) || 0,
+              circleParticipants: Number(addLocForm.circleParticipants) || 0,
+              championsCount: Number(addLocForm.championsCount) || 0,
+              organizationMembers: Number(addLocForm.organizationMembers) || 0,
+              casesCount: Number(addLocForm.casesCount) || 0,
+              casesSolved: Number(addLocForm.casesSolved) || 0,
+              casesPending: Math.max(0, (Number(addLocForm.casesCount) || 0) - (Number(addLocForm.casesSolved) || 0))
+            }
+          };
+        }
+        return loc;
+      }));
+
+      setIsAddLocationModalOpen(false);
+
+      if (supabase) {
+        try {
+          await supabase.from('locations').update({
+            name: addLocForm.name,
+            province: addLocForm.province,
+            coordinate_x: Number(addLocForm.x),
+            coordinate_y: Number(addLocForm.y)
+          }).eq('id', editingLocationId);
+        } catch (err) {
+          console.error("Gagal memperbarui lokasi di Supabase:", err);
+        }
+      }
+
+      setEditingLocationId(null);
+      
+      // Reset Form
+      setAddLocForm({
+        preset: '',
+        name: '',
+        province: '',
+        x: 50,
+        y: 50,
+        workersReached: 120,
+        activeLearningCircles: 2,
+        circleParticipants: 24,
+        championsCount: 2,
+        organizationMembers: 45,
+        casesCount: 2,
+        casesSolved: 1
+      });
       return;
     }
 
@@ -1084,13 +1294,14 @@ export default function App() {
     <AdminShell
       activeTab={selectedLocationId || 'nasional'}
       onActiveTabChange={(id) => setSelectedLocationId(id === 'nasional' ? null : id)}
-      userEmail={isLoggedIn ? "admin@dfw.or.id" : "Mode Guest / Tamu"}
+      userEmail={currentUserEmail}
       yearFilter={yearFilter}
       onYearFilterChange={(year) => setYearFilter(year)}
       locations={locationsWithDerivedStats}
       onOpenAddLocation={() => setIsAddLocationModalOpen(true)}
       isLoggedIn={isLoggedIn}
-      onLoginToggle={() => setIsLoggedIn(!isLoggedIn)}
+      onLoginToggle={handleLoginToggle}
+      onChangePassword={() => setIsChangePasswordOpen(true)}
     >
       
       {/* Supabase Status Loading Alert Banner */}
@@ -1126,6 +1337,7 @@ export default function App() {
           onImportBeneficiaries={handleImportBeneficiaries}
           onDeleteBeneficiary={handleDeleteBeneficiary}
           onUpdateBeneficiary={handleUpdateBeneficiary}
+          isSuperAdmin={isLoggedIn}
         />
       ) : !selectedLocationId ? (
         
@@ -1178,13 +1390,15 @@ export default function App() {
                   Kelola & Tambah KPI Hub
                 </button>
                 
-                <button
-                  onClick={() => setIsAddLocationModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Tambah Lokasi Baru
-                </button>
+                {isLoggedIn && (
+                  <button
+                    onClick={() => setIsAddLocationModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Tambah Lokasi Baru
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1232,6 +1446,7 @@ export default function App() {
               setSelectedLocationId(id);
               setLocationTab('overview');
             }}
+            isSuperAdmin={isLoggedIn}
           />
 
           {/* Combined National Case Documents */}
@@ -1240,6 +1455,7 @@ export default function App() {
               cases={nationalCases}
               onUpdateCase={handleUpdateCase}
               onDeleteCase={handleDeleteCase}
+              isSuperAdmin={isLoggedIn}
               onSelectCase={(c) => {
                 // Find and redirect to the location context of this case
                 const ownerLoc = locations.find(loc => loc.cases.some(caseItem => caseItem.id === c.id));
@@ -1283,14 +1499,36 @@ export default function App() {
               </p>
             </div>
 
-            {/* Quick stats on the right side */}
-            <div className="flex items-center gap-3 shrink-0">
+            {/* Quick stats & Admin actions on the right side */}
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
               <span className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-100 text-blue-700">
                 Hub ID: {activeLocation?.id.toUpperCase()}
               </span>
               <span className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-50 border border-slate-200 text-slate-600">
                 {activeLocation?.stats.activeLearningCircles} Kelompok Belajar
               </span>
+
+              {/* Admin actions to edit or delete the entire location */}
+              {isLoggedIn && activeLocation && (
+                <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3 ml-1.5">
+                  <button
+                    onClick={() => startEditLocation(activeLocation)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 rounded-lg transition-all cursor-pointer shadow-xs"
+                    title="Sunting Detail Wilayah"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    Edit Hub
+                  </button>
+                  <button
+                    onClick={() => handleDeleteLocation(activeLocation.id)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-all cursor-pointer shadow-xs"
+                    title="Hapus Wilayah Ini Permanen"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Hapus Hub
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1379,6 +1617,7 @@ export default function App() {
                       onUpdateCase={handleUpdateCase}
                       onDeleteCase={handleDeleteCase}
                       defaultLocationId={activeLocation.id}
+                      isSuperAdmin={isLoggedIn}
                     />
 
                     {/* Reflections & Learnings */}
@@ -1389,6 +1628,7 @@ export default function App() {
                       onDeleteReflection={(refId) => handleDeleteReflection(activeLocation.id, refId)}
                       forceOpenAddModal={forceAddReflection}
                       onResetForceAdd={() => setForceAddReflection(false)}
+                      isSuperAdmin={isLoggedIn}
                     />
                   </div>
                 </>
@@ -1402,6 +1642,7 @@ export default function App() {
                     onAddChampion={(champ) => handleAddChampion(activeLocation.id, champ)}
                     onUpdateChampion={(idx, champ) => handleUpdateChampion(activeLocation.id, idx, champ)}
                     onDeleteChampion={(idx) => handleDeleteChampion(activeLocation.id, idx)}
+                    isSuperAdmin={isLoggedIn}
                   />
 
                   {/* Local supporting worker unions list */}
@@ -1410,6 +1651,7 @@ export default function App() {
                     onAddOrganization={(org) => handleAddOrganization(activeLocation.id, org)}
                     onUpdateOrganization={(idx, org) => handleUpdateOrganization(activeLocation.id, idx, org)}
                     onDeleteOrganization={(idx) => handleDeleteOrganization(activeLocation.id, idx)}
+                    isSuperAdmin={isLoggedIn}
                   />
                 </div>
               )}
@@ -1440,6 +1682,7 @@ export default function App() {
         locations={locations}
         onSave={handleSaveKPIStats}
         initialLocationId={kpiModalLocationId}
+        isSuperAdmin={isLoggedIn}
       />
 
       {/* Tambah Lokasi / Hub Baru Modal */}
@@ -1448,7 +1691,7 @@ export default function App() {
           {/* Backdrop screen */}
           <div 
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
-            onClick={() => setIsAddLocationModalOpen(false)}
+            onClick={closeAddLocationModal}
           />
 
           {/* Modal Container */}
@@ -1461,15 +1704,15 @@ export default function App() {
                 </div>
                 <div>
                   <h4 className="font-extrabold text-sm md:text-base text-slate-900 uppercase">
-                    Tambah Hub / Posko Wilayah Baru
+                    {editingLocationId ? 'Sunting Wilayah Jaringan Kerja' : 'Tambah Hub / Posko Wilayah Baru'}
                   </h4>
                   <p className="text-[10px] text-slate-500 font-sans">
-                    Daftarkan pelabuhan baru ke dalam Jaringan Pantau Nasional
+                    {editingLocationId ? 'Perbarui informasi spasial dan statis wilayah hub pantau' : 'Daftarkan pelabuhan baru ke dalam Jaringan Pantau Nasional'}
                   </p>
                 </div>
               </div>
               <button 
-                onClick={() => setIsAddLocationModalOpen(false)} 
+                onClick={closeAddLocationModal} 
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -1681,7 +1924,7 @@ export default function App() {
             <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 mt-5 font-sans">
               <button
                 type="button"
-                onClick={() => setIsAddLocationModalOpen(false)}
+                onClick={closeAddLocationModal}
                 className="px-4 py-2 border border-slate-200 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 Batal
@@ -1691,10 +1934,239 @@ export default function App() {
                 onClick={handleAddNewLocation}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-[0_1px_3px_rgba(0,0,0,0.1)] hover:shadow-md cursor-pointer uppercase tracking-wider"
               >
-                Inisiasi Hub Baru
+                {editingLocationId ? 'Simpan Perubahan' : 'Inisiasi Hub Baru'}
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Superadmin Authentication Modal (Password Access) */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
+            onClick={() => setIsAuthModalOpen(false)}
+          />
+
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm overflow-hidden relative z-10 transition-all font-sans">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-2xs">
+                  <ShieldAlert className="w-4 h-4 text-indigo-650" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-xs text-slate-900 uppercase">
+                    Verifikasi Superadmin
+                  </h4>
+                  <p className="text-[9px] text-slate-500 font-sans">
+                    Akses kontrol penuh Jaringan Pantau DFW
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsAuthModalOpen(false)} 
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content info */}
+            <div className="p-5 space-y-4 text-left">
+              <div className="text-[11px] text-slate-600 leading-relaxed bg-indigo-50/50 border border-indigo-100/60 rounded-xl p-3.5 space-y-1">
+                <p className="font-extrabold text-indigo-900">🔒 Akses Dibatasi Koordinator Lapangan</p>
+                <p>Silakan masukkan password superadmin untuk mengizinkan perubahan data spasial, kpi capaian wilayah baru, dan penyuntingan kasus.</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-bold text-slate-650 uppercase tracking-wider text-[9px]">Email Akun</label>
+                <input
+                  type="text"
+                  disabled
+                  value="admin@dfw.or.id"
+                  className="bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-500 font-bold font-mono outline-hidden cursor-not-allowed"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-bold text-slate-650 uppercase tracking-wider text-[9px]">Password Akses</label>
+                <input
+                  type="password"
+                  placeholder="Ketik password akses..."
+                  value={authPasswordInput}
+                  onChange={(e) => {
+                    setAuthPasswordInput(e.target.value);
+                    setAuthError('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAuthSubmit();
+                    }
+                  }}
+                  autoFocus
+                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans font-medium text-slate-800"
+                />
+                <span className="text-[9px] text-slate-400 font-semibold italic">
+                  🔑 Hint Demo: Password default adalah <strong className="text-slate-600 font-extrabold">admin123</strong>
+                </span>
+              </div>
+
+              {authError && (
+                <div className="bg-rose-50 border border-rose-150 rounded-lg p-2.5 text-center text-[11px] text-rose-700 font-bold">
+                  ⚠️ {authError}
+                </div>
+              )}
+
+              {/* Divider Antara Mode Sandi & Cloud Google Sign-In */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase font-bold">
+                  <span className="bg-white px-2.5 text-slate-400">Atau Akses Google</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!supabase) {
+                      alert("Akses login Google memerlukan integrasi database Supabase aktif.\n\nSilakan masukkan kredensial Supabase Anda terlebih dahulu di tombol 'Atur' di pojok kiri bawah sidebar!");
+                      return;
+                    }
+                    try {
+                      const { error } = await supabase.auth.signInWithOAuth({
+                        provider: 'google',
+                        options: {
+                          redirectTo: window.location.origin
+                        }
+                      });
+                      if (error) throw error;
+                    } catch (err: any) {
+                      alert("Gagal menginisiasi OAuth Google via Supabase: " + err.message);
+                    }
+                  }}
+                  className={`w-full inline-flex items-center justify-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:shadow-xs border ${supabase ? 'bg-indigo-600 hover:bg-indigo-700 border-indigo-700' : 'bg-slate-450 hover:bg-slate-500 border-slate-500'}`}
+                >
+                  <Chrome className="w-4 h-4 text-white" />
+                  Masuk dengan Google
+                </button>
+                <p className="text-[9px] text-center text-slate-400 font-sans leading-normal">
+                  {supabase 
+                    ? "✓ Server Supabase terhubung. Email Google Anda akan dicatat otomatis sebagai supervisor terautentikasi." 
+                    : "⚠️ Mode Demo Offline. Klik 'Atur' di sidebar kiri untuk menghubungkan DB Anda agar login Google ini dapat berjalan aktif."
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
+              <span className="text-slate-400 font-medium text-[9px]">
+                DFW Security System
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(false)}
+                  className="px-3.5 py-1.5 border border-slate-200 text-slate-500 rounded-lg hover:bg-white hover:text-slate-700 transition-colors text-xs font-bold cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAuthSubmit}
+                  className="px-4 py-1.5 bg-indigo-650 hover:bg-indigo-700 text-white rounded-lg transition-all shadow-sm text-xs font-extrabold cursor-pointer uppercase tracking-wider text-[10px]"
+                >
+                  Verifikasi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
+            onClick={() => setIsChangePasswordOpen(false)}
+          />
+
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm overflow-hidden relative z-10 transition-all font-sans text-left">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 shadow-2xs">
+                  <Key className="w-4 h-4 text-amber-650" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-xs text-slate-900 uppercase">
+                    Ganti Password Superadmin
+                  </h4>
+                  <p className="text-[9px] text-slate-500 font-sans">
+                    Ubah kredensial akses panel supervisor
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsChangePasswordOpen(false)} 
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <div className="p-5 space-y-4">
+              <div className="text-[11px] text-slate-600 leading-relaxed bg-amber-50/50 border border-amber-100/60 rounded-xl p-3.5 space-y-1">
+                <p className="font-extrabold text-amber-900">✏️ Ganti Kunci Utama</p>
+                <p>Password yang Anda buat akan langsung disimpan dalam penyimpanan lokal browser (localStorage) dan aktif untuk sesi login berikutnya.</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="font-bold text-slate-650 uppercase tracking-wider text-[9px]">Password Baru Anda</label>
+                <input
+                  type="password"
+                  placeholder="Masukkan password baru yang aman..."
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleChangePasswordSubmit();
+                    }
+                  }}
+                  autoFocus
+                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans font-medium text-slate-850"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsChangePasswordOpen(false);
+                  setNewPasswordInput('');
+                }}
+                className="px-3.5 py-1.5 border border-slate-200 text-slate-500 rounded-lg hover:bg-white hover:text-slate-700 transition-colors text-xs font-bold cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleChangePasswordSubmit}
+                className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-all shadow-sm text-xs font-extrabold cursor-pointer uppercase tracking-wider text-[10px]"
+              >
+                Ganti Password
+              </button>
+            </div>
           </div>
         </div>
       )}

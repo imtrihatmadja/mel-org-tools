@@ -27,6 +27,7 @@ interface BeneficiariesListProps {
   onImportBeneficiaries: (newList: Beneficiary[], overwrite: boolean) => void;
   onDeleteBeneficiary: (id: string) => void;
   onUpdateBeneficiary: (updated: Beneficiary) => void;
+  isSuperAdmin?: boolean;
 }
 
 export const BeneficiariesList: React.FC<BeneficiariesListProps> = ({
@@ -35,7 +36,8 @@ export const BeneficiariesList: React.FC<BeneficiariesListProps> = ({
   onAddBeneficiary,
   onImportBeneficiaries,
   onDeleteBeneficiary,
-  onUpdateBeneficiary
+  onUpdateBeneficiary,
+  isSuperAdmin = false
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedHub, setSelectedHub] = useState<string>('all');
@@ -211,6 +213,10 @@ export const BeneficiariesList: React.FC<BeneficiariesListProps> = ({
   // Submit manual form
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSuperAdmin) {
+      alert("Akses Terkunci: Maaf, Anda saat ini mengakses dalam Mode Guest. Silakan login sebagai Superadmin.");
+      return;
+    }
     if (!formData.name) return;
 
     if (editingId) {
@@ -291,16 +297,18 @@ export const BeneficiariesList: React.FC<BeneficiariesListProps> = ({
             Unduh Template Excel
           </button>
           
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setIsFormOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Tambah Manual
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setIsFormOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Tambah Manual
+            </button>
+          )}
         </div>
         <div className="absolute right-0 bottom-0 top-0 w-1/3 bg-gradient-to-l from-emerald-500/5 to-transparent pointer-events-none rounded-r-2xl" />
       </div>
@@ -372,25 +380,37 @@ export const BeneficiariesList: React.FC<BeneficiariesListProps> = ({
             </h3>
 
             {/* Drag & Drop Area */}
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50 rounded-xl p-6 text-center cursor-pointer transition-all"
-            >
-              <FileSpreadsheet className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-              <span className="block text-[11px] font-bold text-slate-600">
-                Pilih atau Seret Berkas
-              </span>
-              <span className="block text-[9px] text-slate-400 mt-1">
-                Format .xlsx, .xls, .csv
-              </span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
+            {isSuperAdmin ? (
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-slate-50 rounded-xl p-6 text-center cursor-pointer transition-all"
+              >
+                <FileSpreadsheet className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                <span className="block text-[11px] font-bold text-slate-600">
+                  Pilih atau Seret Berkas
+                </span>
+                <span className="block text-[9px] text-slate-400 mt-1">
+                  Format .xlsx, .xls, .csv
+                </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
+            ) : (
+              <div className="border border-amber-205 bg-amber-50 rounded-xl p-4 text-center">
+                <AlertCircle className="w-7 h-7 text-amber-500 mx-auto mb-1.5" />
+                <span className="block text-[10px] font-bold text-amber-800">
+                  Impor Dinonaktifkan
+                </span>
+                <span className="block text-[9px] text-slate-500 mt-1 leading-relaxed">
+                  Fitur mengunggah spreadsheet atau menambah daftar nama dikunci untuk Guest. Hubungi admin@dfw.or.id untuk mengedit.
+                </span>
+              </div>
+            )}
 
             {isImporting && (
               <div className="mt-3 flex items-center gap-2 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg">
@@ -528,13 +548,15 @@ export const BeneficiariesList: React.FC<BeneficiariesListProps> = ({
                     <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Kategori</th>
                     <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Hub Monitor</th>
                     <th className="px-5 py-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Catatan Khusus</th>
-                    <th className="px-5 py-3 text-right text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Aksi</th>
+                    {isSuperAdmin && (
+                      <th className="px-5 py-3 text-right text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Aksi</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredBeneficiaries.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-5 py-10 text-center text-xs text-slate-500">
+                      <td colSpan={isSuperAdmin ? 8 : 7} className="px-5 py-10 text-center text-xs text-slate-500">
                         Tidak ada data nelayan terdaftar yang cocok dengan kriteria pencarian dan saringan.
                       </td>
                     </tr>
@@ -564,24 +586,26 @@ export const BeneficiariesList: React.FC<BeneficiariesListProps> = ({
                           </span>
                         </td>
                         <td className="px-5 py-3 text-xs text-slate-500 max-w-[200px] truncate" title={b.notes}>{b.notes || '-'}</td>
-                        <td className="px-5 py-3 text-right">
-                          <div className="flex justify-end gap-1.5">
-                            <button
-                              onClick={() => handleEditClick(b)}
-                              className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                              title="Sunting data"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => onDeleteBeneficiary(b.id)}
-                              className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Hapus data"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
+                        {isSuperAdmin && (
+                          <td className="px-5 py-3 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => handleEditClick(b)}
+                                className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                title="Sunting data"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => onDeleteBeneficiary(b.id)}
+                                className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Hapus data"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
