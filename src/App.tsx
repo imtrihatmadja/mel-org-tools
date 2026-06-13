@@ -1059,35 +1059,10 @@ export default function App() {
         }
       }
       setIsLoggedIn(false);
-      setIsChangePasswordOpen(false);
       setCurrentUserEmail('Mode Guest / Tamu');
     } else {
-      setAuthPasswordInput('');
-      setAuthError('');
       setIsAuthModalOpen(true);
     }
-  };
-
-  const handleAuthSubmit = () => {
-    if (authPasswordInput === superadminPassword) {
-      setIsLoggedIn(true);
-      setIsAuthModalOpen(false);
-      setAuthPasswordInput('');
-    } else {
-      setAuthError('Password salah! Silakan coba lagi.');
-    }
-  };
-
-  const handleChangePasswordSubmit = () => {
-    if (!newPasswordInput.trim()) {
-      alert('Password tidak boleh kosong!');
-      return;
-    }
-    localStorage.setItem('DFW_SUPERADMIN_PASSWORD', newPasswordInput.trim());
-    setSuperadminPassword(newPasswordInput.trim());
-    setIsChangePasswordOpen(false);
-    setNewPasswordInput('');
-    alert('Password superadmin berhasil diperbarui!');
   };
 
   const closeAddLocationModal = () => {
@@ -1959,7 +1934,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Superadmin Authentication Modal (Password Access) */}
+      {/* Superadmin Authentication Modal (Google Sign-In Direct Access) */}
       {isAuthModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div 
@@ -1976,7 +1951,7 @@ export default function App() {
                 </div>
                 <div>
                   <h4 className="font-extrabold text-xs text-slate-900 uppercase">
-                    Verifikasi Superadmin
+                    Verifikasi Instan Google
                   </h4>
                   <p className="text-[9px] text-slate-500 font-sans">
                     Akses kontrol penuh Jaringan Pantau DFW
@@ -1995,59 +1970,10 @@ export default function App() {
             <div className="p-5 space-y-4 text-left">
               <div className="text-[11px] text-slate-600 leading-relaxed bg-indigo-50/50 border border-indigo-100/60 rounded-xl p-3.5 space-y-1">
                 <p className="font-extrabold text-indigo-900">🔒 Akses Dibatasi Koordinator Lapangan</p>
-                <p>Silakan masukkan password superadmin untuk mengizinkan perubahan data spasial, kpi capaian wilayah baru, dan penyuntingan kasus.</p>
+                <p>Gunakan akun Google terdaftar untuk mengizinkan perubahan data spasial, kpi capaian wilayah baru, dan pengelolaan kasus terpusat.</p>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-650 uppercase tracking-wider text-[9px]">Email Akun</label>
-                <input
-                  type="text"
-                  disabled
-                  value="admin@dfw.or.id"
-                  className="bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-500 font-bold font-mono outline-hidden cursor-not-allowed"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-650 uppercase tracking-wider text-[9px]">Password Akses</label>
-                <input
-                  type="password"
-                  placeholder="Ketik password akses..."
-                  value={authPasswordInput}
-                  onChange={(e) => {
-                    setAuthPasswordInput(e.target.value);
-                    setAuthError('');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAuthSubmit();
-                    }
-                  }}
-                  autoFocus
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans font-medium text-slate-800"
-                />
-                <span className="text-[9px] text-slate-400 font-semibold italic">
-                  🔑 Hint Demo: Password default adalah <strong className="text-slate-600 font-extrabold">admin123</strong>
-                </span>
-              </div>
-
-              {authError && (
-                <div className="bg-rose-50 border border-rose-150 rounded-lg p-2.5 text-center text-[11px] text-rose-700 font-bold">
-                  ⚠️ {authError}
-                </div>
-              )}
-
-              {/* Divider Antara Mode Sandi & Cloud Google Sign-In */}
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold">
-                  <span className="bg-white px-2.5 text-slate-400">Atau Akses Google</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
+              <div className="space-y-3 pt-1">
                 <button
                   type="button"
                   onClick={async () => {
@@ -2067,21 +1993,20 @@ export default function App() {
                       alert("Gagal menginisiasi OAuth Google via Supabase: " + err.message);
                     }
                   }}
-                  className={`w-full inline-flex items-center justify-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:shadow-xs border ${supabase ? 'bg-indigo-600 hover:bg-indigo-700 border-indigo-700' : 'bg-slate-450 hover:bg-slate-500 border-slate-500'}`}
+                  className={`w-full inline-flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-sm hover:shadow-md border active:scale-[0.98] ${supabase ? 'bg-indigo-600 hover:bg-indigo-750 border-indigo-700 hover:border-indigo-800' : 'bg-slate-450 hover:bg-slate-500 border-slate-500'}`}
                 >
                   <Chrome className="w-4 h-4 text-white" />
                   Masuk dengan Google
                 </button>
                 <p className="text-[9px] text-center text-slate-400 font-sans leading-normal">
                   {supabase 
-                    ? "✓ Server Supabase terhubung. Email Google Anda akan dicatat otomatis sebagai supervisor terautentikasi." 
+                    ? "✓ Server Supabase terhubung. Email Google Anda otomatis divalidasi sebagai administrator." 
                     : "⚠️ Mode Demo Offline. Klik 'Atur' di sidebar kiri untuk menghubungkan DB Anda agar login Google ini dapat berjalan aktif."
                   }
                 </p>
               </div>
             </div>
-
-            {/* Actions */}
+                 {/* Actions Footer */}
             <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
               <span className="text-slate-400 font-medium text-[9px]">
                 DFW Security System
@@ -2090,99 +2015,11 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(false)}
-                  className="px-3.5 py-1.5 border border-slate-200 text-slate-500 rounded-lg hover:bg-white hover:text-slate-700 transition-colors text-xs font-bold cursor-pointer"
+                  className="px-4 py-1.5 border border-slate-200 text-slate-600 rounded-lg bg-white hover:bg-slate-50 hover:text-slate-800 transition-all text-xs font-bold cursor-pointer shadow-2xs active:scale-[0.97]"
                 >
                   Batal
                 </button>
-                <button
-                  type="button"
-                  onClick={handleAuthSubmit}
-                  className="px-4 py-1.5 bg-indigo-650 hover:bg-indigo-700 text-white rounded-lg transition-all shadow-sm text-xs font-extrabold cursor-pointer uppercase tracking-wider text-[10px]"
-                >
-                  Verifikasi
-                </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Change Password Modal */}
-      {isChangePasswordOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" 
-            onClick={() => setIsChangePasswordOpen(false)}
-          />
-
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-sm overflow-hidden relative z-10 transition-all font-sans text-left">
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 shadow-2xs">
-                  <Key className="w-4 h-4 text-amber-650" />
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-xs text-slate-900 uppercase">
-                    Ganti Password Superadmin
-                  </h4>
-                  <p className="text-[9px] text-slate-500 font-sans">
-                    Ubah kredensial akses panel supervisor
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsChangePasswordOpen(false)} 
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Form Content */}
-            <div className="p-5 space-y-4">
-              <div className="text-[11px] text-slate-600 leading-relaxed bg-amber-50/50 border border-amber-100/60 rounded-xl p-3.5 space-y-1">
-                <p className="font-extrabold text-amber-900">✏️ Ganti Kunci Utama</p>
-                <p>Password yang Anda buat akan langsung disimpan dalam penyimpanan lokal browser (localStorage) dan aktif untuk sesi login berikutnya.</p>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-slate-650 uppercase tracking-wider text-[9px]">Password Baru Anda</label>
-                <input
-                  type="password"
-                  placeholder="Masukkan password baru yang aman..."
-                  value={newPasswordInput}
-                  onChange={(e) => setNewPasswordInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleChangePasswordSubmit();
-                    }
-                  }}
-                  autoFocus
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans font-medium text-slate-850"
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsChangePasswordOpen(false);
-                  setNewPasswordInput('');
-                }}
-                className="px-3.5 py-1.5 border border-slate-200 text-slate-500 rounded-lg hover:bg-white hover:text-slate-700 transition-colors text-xs font-bold cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleChangePasswordSubmit}
-                className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-all shadow-sm text-xs font-extrabold cursor-pointer uppercase tracking-wider text-[10px]"
-              >
-                Ganti Password
-              </button>
             </div>
           </div>
         </div>
