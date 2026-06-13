@@ -967,7 +967,7 @@ export default function App() {
 
     if (supabase) {
       try {
-        await supabase.from('organizations').insert({
+        const { error } = await supabase.from('organizations').insert({
           location_id: locId,
           name: org.name,
           type: org.type,
@@ -977,8 +977,42 @@ export default function App() {
           pic_phone: org.picPhone || '',
           pic_socials: org.picSocials || ''
         });
-      } catch (err) {
-        console.error("Gagal menambahkan organisasi ke Supabase:", err);
+
+        if (error) {
+          console.error("Gagal menambahkan organisasi dengan PIC ke Supabase:", error);
+          
+          // Fallback jika kolom pic_name atau sejenisnya tidak ditemukan di database target
+          const isMissingColumnError = error.message && (
+            error.message.includes("column") || 
+            error.message.includes("pic_name") || 
+            error.message.includes("pic_phone") || 
+            error.message.includes("pic_socials") || 
+            error.code === "42703"
+          );
+
+          if (isMissingColumnError) {
+            console.warn("Mencoba melakukan fallback menyimpan organisasi tanpa atribut PIC...");
+            const { error: fallbackError } = await supabase.from('organizations').insert({
+              location_id: locId,
+              name: org.name,
+              type: org.type,
+              established: org.established,
+              members: org.members
+            });
+            if (fallbackError) {
+              console.error("Fallback juga gagal:", fallbackError);
+              alert("Gagal menyimpan data organisasi ke Supabase: " + fallbackError.message);
+            } else {
+              console.log("Organisasi berhasil disimpan via fallback! (Tanpa record PIC)");
+            }
+          } else {
+            alert("Gagal menambahkan data organisasi ke Supabase: " + error.message);
+          }
+        } else {
+          console.log("Organisasi berhasil ditambahkan ke Supabase.");
+        }
+      } catch (err: any) {
+        console.error("Exception saat menambahkan organisasi:", err);
       }
     }
   };
@@ -1005,7 +1039,7 @@ export default function App() {
 
     if (supabase && oldOrgName) {
       try {
-        await supabase.from('organizations').update({
+        const { error } = await supabase.from('organizations').update({
           name: updatedOrg.name,
           type: updatedOrg.type,
           established: updatedOrg.established,
@@ -1014,8 +1048,42 @@ export default function App() {
           pic_phone: updatedOrg.picPhone || '',
           pic_socials: updatedOrg.picSocials || ''
         }).match({ location_id: locId, name: oldOrgName });
-      } catch (err) {
-        console.error("Gagal memperbarui organisasi di Supabase:", err);
+
+        if (error) {
+          console.error("Gagal memperbarui organisasi dengan PIC di Supabase:", error);
+
+          // Fallback jika kolom pic_name atau sejenisnya tidak ditemukan di database target
+          const isMissingColumnError = error.message && (
+            error.message.includes("column") || 
+            error.message.includes("pic_name") || 
+            error.message.includes("pic_phone") || 
+            error.message.includes("pic_socials") || 
+            error.code === "42703"
+          );
+
+          if (isMissingColumnError) {
+            console.warn("Mencoba melakukan fallback memperbarui organisasi tanpa atribut PIC...");
+            const { error: fallbackError } = await supabase.from('organizations').update({
+              name: updatedOrg.name,
+              type: updatedOrg.type,
+              established: updatedOrg.established,
+              members: updatedOrg.members
+            }).match({ location_id: locId, name: oldOrgName });
+            
+            if (fallbackError) {
+              console.error("Fallback update juga gagal:", fallbackError);
+              alert("Gagal memperbarui data organisasi di Supabase: " + fallbackError.message);
+            } else {
+              console.log("Organisasi berhasil diperbarui via fallback! (Tanpa record PIC)");
+            }
+          } else {
+            alert("Gagal memperbarui data organisasi di Supabase: " + error.message);
+          }
+        } else {
+          console.log("Organisasi berhasil diperbarui di Supabase.");
+        }
+      } catch (err: any) {
+        console.error("Exception saat memperbarui organisasi:", err);
       }
     }
   };
@@ -1042,9 +1110,15 @@ export default function App() {
 
     if (supabase && oldOrgName) {
       try {
-        await supabase.from('organizations').delete().match({ location_id: locId, name: oldOrgName });
-      } catch (err) {
-        console.error("Gagal menghapus organisasi dari Supabase:", err);
+        const { error } = await supabase.from('organizations').delete().match({ location_id: locId, name: oldOrgName });
+        if (error) {
+          console.error("Gagal menghapus organisasi dari Supabase:", error);
+          alert("Gagal menghapus organisasi dari Supabase: " + error.message);
+        } else {
+          console.log("Organisasi berhasil dihapus dari Supabase.");
+        }
+      } catch (err: any) {
+        console.error("Exception saat menghapus organisasi:", err);
       }
     }
   };
