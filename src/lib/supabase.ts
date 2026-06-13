@@ -2,6 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import { LocationData, Case, Reflection, Champion, WorkerOrganization, Beneficiary, HistoricalTrend, TimelineEvent } from '../types';
 
 // Membaca kredensial dari environment variable bentukan Vite atau localStorage untuk fleksibilitas di GitHub Pages
+// JIKA INGIN INTEGRASI BERJALAN OTOMATIS BAGI SEMUA PENGUNJUNG TANPA PERLU MANUAL MENGATUR KUNCI:
+// Masukkan kredensial Supabase Anda di dua variabel DEFAULT di bawah ini.
+// (Sangat aman untuk Web App berbasis static client-side di mana Anon Key memang bersifat publik)
+const DEFAULT_SUPABASE_URL = "https://hhqaefonrqjztrihonkat.supabase.co" as string;
+const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhocWFlZm9ucnFqenRyaG9ua2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNDg1MDgsImV4cCI6MjA5NjgyNDUwOH0.RKfKBSWEtW3byEUunYy35dKS-vmwkuiyFwtc2Z63jtE" as string; // Masukkan Kunci Publik Anon Supabase Anda di sini
+
 export function getSupabaseConfig() {
   const envUrl = (import.meta as any).env.VITE_SUPABASE_URL;
   const envKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
@@ -9,13 +15,41 @@ export function getSupabaseConfig() {
   const localUrl = localStorage.getItem('DFW_SUPABASE_URL');
   const localKey = localStorage.getItem('DFW_SUPABASE_ANON_KEY');
 
-  const url = (envUrl && envUrl !== "https://your-project-id.supabase.co" && envUrl !== "") ? envUrl : localUrl;
-  const key = (envKey && envKey !== "your-anon-public-key" && envKey !== "") ? envKey : localKey;
+  // Urutan prioritas pembacaan kredensial database:
+  // 1. Variabel Lingkungan (.env saat build aplikasi runtime)
+  // 2. Penyimpanan Lokal Browser / LocalStorage (dari tombol "Atur" di sidebar)
+  // 3. Nilai bawaan/fallback default di file kode ini
+  let url = "";
+  if (envUrl && envUrl !== "https://your-project-id.supabase.co" && envUrl !== "") {
+    url = envUrl;
+  } else if (localUrl) {
+    url = localUrl;
+  } else if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_URL !== "") {
+    url = DEFAULT_SUPABASE_URL;
+  }
+
+  let key = "";
+  if (envKey && envKey !== "your-anon-public-key" && envKey !== "") {
+    key = envKey;
+  } else if (localKey) {
+    key = localKey;
+  } else if (DEFAULT_SUPABASE_ANON_KEY && DEFAULT_SUPABASE_ANON_KEY !== "") {
+    key = DEFAULT_SUPABASE_ANON_KEY;
+  }
+
+  const isConfigured = Boolean(
+    url && 
+    key && 
+    url !== "https://your-project-id.supabase.co" && 
+    url !== "" && 
+    key !== "your-anon-public-key" && 
+    key !== ""
+  );
 
   return {
     supabaseUrl: url?.trim() || '',
     supabaseAnonKey: key?.trim() || '',
-    isConfigured: Boolean(url && key && url !== "https://your-project-id.supabase.co" && url !== "" && key !== "")
+    isConfigured
   };
 }
 
