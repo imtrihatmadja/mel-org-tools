@@ -14,6 +14,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { LocationData, AreaMapPin } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface LocalHubMapProps {
   location: LocationData;
@@ -51,6 +52,20 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin }
         
         // Simpan ke localStorage agar tidak ter-reset
         localStorage.setItem(`DFW_MAP_IMAGE_${location.id}`, base64String);
+
+        // Simpan ke Supabase jika login
+        if (supabase) {
+          supabase.from('reflections').upsert({
+            id: `PETA-${location.id}`,
+            location_id: location.id,
+            title: `PETA_KUSTOM_${location.id}`,
+            category: 'PETA_KUSTOM',
+            content: base64String,
+            author: 'Sistem Geospasial'
+          }).then(({ error }) => {
+            if (error) console.error("Gagal menyimpan peta kustom ke Supabase:", error);
+          });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -76,6 +91,16 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin }
       customMapImage: undefined
     });
     localStorage.removeItem(`DFW_MAP_IMAGE_${location.id}`);
+
+    // Hapus di Supabase jika login
+    if (supabase) {
+      supabase.from('reflections').delete().match({
+        location_id: location.id,
+        category: 'PETA_KUSTOM'
+      }).then(({ error }) => {
+        if (error) console.error("Gagal menghapus peta kustom di Supabase:", error);
+      });
+    }
   };
 
   // Capture coordinate percentage relative to map container size on click
@@ -135,6 +160,20 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin }
     onUpdateLocation(updatedLocation);
     localStorage.setItem(`DFW_MAP_PINS_${location.id}`, JSON.stringify(updatedPins));
 
+    // Simpan ke Supabase jika login
+    if (supabase) {
+      supabase.from('reflections').upsert({
+        id: `PINS-${location.id}`,
+        location_id: location.id,
+        title: `PETA_PINS_${location.id}`,
+        category: 'PETA_PIN',
+        content: JSON.stringify(updatedPins),
+        author: 'Sistem Geospasial'
+      }).then(({ error }) => {
+        if (error) console.error("Gagal menyimpan pin peta ke Supabase:", error);
+      });
+    }
+
     // Reset status
     setIsAddingPin(false);
     setClickCoords(null);
@@ -152,6 +191,29 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin }
 
     onUpdateLocation(updatedLocation);
     localStorage.setItem(`DFW_MAP_PINS_${location.id}`, JSON.stringify(filteredPins));
+
+    // Simpan ke Supabase jika login
+    if (supabase) {
+      if (filteredPins.length === 0) {
+        supabase.from('reflections').delete().match({
+          location_id: location.id,
+          category: 'PETA_PIN'
+        }).then(({ error }) => {
+          if (error) console.error("Gagal menghapus pin peta di Supabase:", error);
+        });
+      } else {
+        supabase.from('reflections').upsert({
+          id: `PINS-${location.id}`,
+          location_id: location.id,
+          title: `PETA_PINS_${location.id}`,
+          category: 'PETA_PIN',
+          content: JSON.stringify(filteredPins),
+          author: 'Sistem Geospasial'
+        }).then(({ error }) => {
+          if (error) console.error("Gagal mengupdate pin peta di Supabase:", error);
+        });
+      }
+    }
 
     if (activePin?.id === pinId) {
       setActivePin(null);

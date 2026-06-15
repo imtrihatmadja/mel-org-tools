@@ -134,10 +134,10 @@ export default function App() {
     };
   }, []);
 
-  // Mekanisme Pemuatan Dinamis Data dari Database Supabase Anda!
+  // Mekanisme Pemuatan Dinamis Data dari Database Supabase Anda secara Real-time!
   useEffect(() => {
-    async function sinkronkanSupabase() {
-      setIsLoadingSupabase(true);
+    async function sinkronkanSupabase(silent = false) {
+      if (!silent) setIsLoadingSupabase(true);
       try {
         const dbRes = await fetchAllDataFromSupabase();
         if (dbRes) {
@@ -154,10 +154,41 @@ export default function App() {
       } catch (err) {
         console.error("Gagal menyelesaikan sinkronisasi database:", err);
       } finally {
-        setIsLoadingSupabase(false);
+        if (!silent) setIsLoadingSupabase(false);
       }
     }
+
     sinkronkanSupabase();
+
+    // 1. Polling interval (setiap 12 detik) sebagai fallback yang tangguh
+    const intervalId = setInterval(() => {
+      sinkronkanSupabase(true);
+    }, 12000);
+
+    // 2. Supabase Realtime Channel Subscription
+    let channel: any = null;
+    if (supabase) {
+      channel = supabase
+        .channel('schema-db-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public' },
+          (payload) => {
+            console.log("Perubahan real-time terdeteksi dari Supabase:", payload);
+            sinkronkanSupabase(true);
+          }
+        )
+        .subscribe((status) => {
+          console.log("Status Subscription Real-time Supabase:", status);
+        });
+    }
+
+    return () => {
+      clearInterval(intervalId);
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, []);
 
   const [addLocForm, setAddLocForm] = useState({
@@ -1762,6 +1793,29 @@ export default function App() {
                                           // Update state
                                           setLocations(prev => prev.map(l => l.id === updatedLoc.id ? updatedLoc : l));
                                           localStorage.setItem(`DFW_MAP_PINS_${activeLocation.id}`, JSON.stringify(filteredPins));
+
+                                          // Simpan ke Supabase jika login
+                                          if (supabase) {
+                                            if (filteredPins.length === 0) {
+                                              supabase.from('reflections').delete().match({
+                                                location_id: activeLocation.id,
+                                                category: 'PETA_PIN'
+                                              }).then(({ error }) => {
+                                                if (error) console.error("Gagal menghapus pin peta di Supabase:", error);
+                                              });
+                                            } else {
+                                              supabase.from('reflections').upsert({
+                                                id: `PINS-${activeLocation.id}`,
+                                                location_id: activeLocation.id,
+                                                title: `PETA_PINS_${activeLocation.id}`,
+                                                category: 'PETA_PIN',
+                                                content: JSON.stringify(filteredPins),
+                                                author: 'Sistem Geospasial'
+                                              }).then(({ error }) => {
+                                                if (error) console.error("Gagal mengupdate pin peta di Supabase:", error);
+                                              });
+                                            }
+                                          }
                                         }}
                                         className="p-1 px-2.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-0.5 font-bold font-sans text-[10px]"
                                         title="Hapus Titik Pin"

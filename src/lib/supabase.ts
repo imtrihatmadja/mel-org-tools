@@ -191,7 +191,25 @@ export async function fetchAllDataFromSupabase(): Promise<{
         };
       });
 
-      const mappingRefs: Reflection[] = filteredRefs.map((r: any) => ({
+      // Extract custom map image if any
+      const customMapRef = filteredRefs.find((r: any) => r.category === 'PETA_KUSTOM');
+      const customMapImage = customMapRef ? customMapRef.content : undefined;
+
+      // Extract map pins if any
+      const mapPinsRef = filteredRefs.find((r: any) => r.category === 'PETA_PIN');
+      let mapPins: any[] = [];
+      if (mapPinsRef) {
+        try {
+          mapPins = JSON.parse(mapPinsRef.content);
+        } catch (e) {
+          console.error("Gagal melakukan parse map pins dari Supabase:", e);
+        }
+      }
+
+      // Filter out special system reflections for actual display
+      const displayRefs = filteredRefs.filter((r: any) => r.category !== 'PETA_KUSTOM' && r.category !== 'PETA_PIN');
+
+      const mappingRefs: Reflection[] = displayRefs.map((r: any) => ({
         id: r.id,
         title: r.title,
         date: r.date,
@@ -261,7 +279,9 @@ export async function fetchAllDataFromSupabase(): Promise<{
         issueCategories,
         cases: mappingCases,
         reflections: mappingRefs,
-        timeline: mappingTimeline
+        timeline: mappingTimeline,
+        customMapImage: customMapImage,
+        mapPins: mapPins
       };
     });
 
