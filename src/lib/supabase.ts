@@ -206,8 +206,19 @@ export async function fetchAllDataFromSupabase(): Promise<{
         }
       }
 
+      // Extract manual KPI override if any from Supabase
+      const kpiOverrideRef = filteredRefs.find((r: any) => r.category === 'KPI_OVERRIDE');
+      let localKPIs = null;
+      if (kpiOverrideRef) {
+        try {
+          localKPIs = JSON.parse(kpiOverrideRef.content);
+        } catch (e) {
+          console.error("Gagal melakukan parse KPI override dari Supabase:", e);
+        }
+      }
+
       // Filter out special system reflections for actual display
-      const displayRefs = filteredRefs.filter((r: any) => r.category !== 'PETA_KUSTOM' && r.category !== 'PETA_PIN');
+      const displayRefs = filteredRefs.filter((r: any) => r.category !== 'PETA_KUSTOM' && r.category !== 'PETA_PIN' && r.category !== 'KPI_OVERRIDE');
 
       const mappingRefs: Reflection[] = displayRefs.map((r: any) => ({
         id: r.id,
@@ -232,9 +243,11 @@ export async function fetchAllDataFromSupabase(): Promise<{
       const totalCases = mappingCases.length;
       const totalSolved = mappingCases.filter(c => c.status === 'Selesai').length;
 
-      // Ambil override data kuantitatif manual dari localStorage jika ada, agar tetap sinkron untuk target kualitatif
-      const localKPIsJson = localStorage.getItem(`DFW_LOCAL_KPI_${id}`);
-      let localKPIs = localKPIsJson ? JSON.parse(localKPIsJson) : null;
+      // Ambil override data kuantitatif manual dari localStorage jika belum tersemat di Supabase
+      if (!localKPIs) {
+        const localKPIsJson = localStorage.getItem(`DFW_LOCAL_KPI_${id}`);
+        localKPIs = localKPIsJson ? JSON.parse(localKPIsJson) : null;
+      }
 
       const stats = {
         workersReached: Math.max(totalReached, localKPIs?.workersReached || 0),

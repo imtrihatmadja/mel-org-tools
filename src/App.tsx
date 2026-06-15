@@ -160,10 +160,10 @@ export default function App() {
 
     sinkronkanSupabase();
 
-    // 1. Polling interval (setiap 12 detik) sebagai fallback yang tangguh
+    // 1. Polling interval (setiap 4 detik) sebagai fallback yang tangguh
     const intervalId = setInterval(() => {
       sinkronkanSupabase(true);
-    }, 12000);
+    }, 4000);
 
     // 2. Supabase Realtime Channel Subscription
     let channel: any = null;
@@ -301,8 +301,8 @@ export default function App() {
         ...loc,
         stats: finalStats,
         champions: combinedChampions,
-        customMapImage: cachedImage || loc.customMapImage,
-        mapPins: cachedPins.length > 0 ? cachedPins : (loc.mapPins || [])
+        customMapImage: supabase ? (loc.customMapImage || cachedImage) : (cachedImage || loc.customMapImage),
+        mapPins: supabase ? (loc.mapPins || []) : (cachedPins.length > 0 ? cachedPins : (loc.mapPins || []))
       };
     });
   }, [locations, beneficiaries]);
@@ -452,6 +452,17 @@ export default function App() {
             description: `${actionText} berhasil disinkronkan ke cloud.`,
             category: 'pencapaian'
           }).then();
+
+          supabase.from('reflections').upsert({
+            id: `KPI-${locationId}`,
+            location_id: locationId,
+            title: `KPI_OVERRIDE_${locationId}`,
+            category: 'KPI_OVERRIDE',
+            content: JSON.stringify(finalStats),
+            author: currentUserEmail || 'admin@dfw.or.id'
+          }).then(({ error }) => {
+            if (error) console.error("Gagal menyimpan KPI override ke Supabase:", error);
+          });
         }
 
         return {
@@ -1244,6 +1255,37 @@ export default function App() {
             coordinate_x: Number(addLocForm.x),
             coordinate_y: Number(addLocForm.y)
           }).eq('id', editingLocationId);
+
+          if (addLocForm.customMapImage) {
+            await supabase.from('reflections').upsert({
+              id: `PETA-${editingLocationId}`,
+              location_id: editingLocationId,
+              title: `PETA_KUSTOM_${editingLocationId}`,
+              category: 'PETA_KUSTOM',
+              content: addLocForm.customMapImage,
+              author: 'Sistem Geospasial'
+            });
+          }
+
+          const editedStats = {
+            workersReached: Number(addLocForm.workersReached) || 0,
+            activeLearningCircles: Number(addLocForm.activeLearningCircles) || 0,
+            circleParticipants: Number(addLocForm.circleParticipants) || 0,
+            championsCount: Number(addLocForm.championsCount) || 0,
+            organizationMembers: Number(addLocForm.organizationMembers) || 0,
+            casesCount: Number(addLocForm.casesCount) || 0,
+            casesSolved: Number(addLocForm.casesSolved) || 0,
+            casesPending: Math.max(0, (Number(addLocForm.casesCount) || 0) - (Number(addLocForm.casesSolved) || 0))
+          };
+
+          await supabase.from('reflections').upsert({
+            id: `KPI-${editingLocationId}`,
+            location_id: editingLocationId,
+            title: `KPI_OVERRIDE_${editingLocationId}`,
+            category: 'KPI_OVERRIDE',
+            content: JSON.stringify(editedStats),
+            author: currentUserEmail || 'admin@dfw.or.id'
+          });
         } catch (err) {
           console.error("Gagal memperbarui lokasi di Supabase:", err);
         }
@@ -1340,6 +1382,37 @@ export default function App() {
           title: "Inisiasi Hub Posko Baru",
           description: `Pembentukan posko pengaduan bersama dan pemantauan hak asasi awak kapal perikanan di pelabuhan ${addLocForm.name}, ${addLocForm.province}.`,
           category: "organisasi"
+        });
+
+        if (addLocForm.customMapImage) {
+          await supabase.from('reflections').upsert({
+            id: `PETA-${slugId}`,
+            location_id: slugId,
+            title: `PETA_KUSTOM_${slugId}`,
+            category: 'PETA_KUSTOM',
+            content: addLocForm.customMapImage,
+            author: 'Sistem Geospasial'
+          });
+        }
+
+        const initialStats = {
+          workersReached: Number(addLocForm.workersReached) || 0,
+          activeLearningCircles: Number(addLocForm.activeLearningCircles) || 0,
+          circleParticipants: Number(addLocForm.circleParticipants) || 0,
+          championsCount: Number(addLocForm.championsCount) || 0,
+          organizationMembers: Number(addLocForm.organizationMembers) || 0,
+          casesCount: Number(addLocForm.casesCount) || 0,
+          casesSolved: Number(addLocForm.casesSolved) || 0,
+          casesPending: Math.max(0, (Number(addLocForm.casesCount) || 0) - (Number(addLocForm.casesSolved) || 0))
+        };
+
+        await supabase.from('reflections').upsert({
+          id: `KPI-${slugId}`,
+          location_id: slugId,
+          title: `KPI_OVERRIDE_${slugId}`,
+          category: 'KPI_OVERRIDE',
+          content: JSON.stringify(initialStats),
+          author: currentUserEmail || 'admin@dfw.or.id'
         });
       } catch (err) {
         console.error("Gagal menambahkan lokasi ke Supabase:", err);
