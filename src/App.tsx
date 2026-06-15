@@ -1635,6 +1635,7 @@ export default function App() {
                 setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
               }}
               isSuperAdmin={isLoggedIn}
+              currentUserEmail={currentUserEmail}
             />
           )}
 
@@ -1763,10 +1764,15 @@ export default function App() {
                               {activeLocation.mapPins.map((pin) => (
                                 <tr key={pin.id} className="hover:bg-slate-50/50 transition-colors">
                                   <td className="py-2.5 px-4 font-bold text-indigo-950 whitespace-nowrap">
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                                      {pin.label}
-                                    </span>
+                                    <div className="flex flex-col">
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                        {pin.label}
+                                      </span>
+                                      <span className="text-[10px] text-slate-400 font-normal mt-0.5 pl-3.5">
+                                        Log Oleh: <strong className="font-semibold text-slate-500">{pin.createdBy || 'Petugas Lapangan'}</strong>
+                                      </span>
+                                    </div>
                                   </td>
                                   <td className="py-2.5 px-4 font-mono text-[10px] text-slate-500 whitespace-nowrap">
                                     X: {pin.x}% | Y: {pin.y}%

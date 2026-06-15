@@ -78,6 +78,7 @@ export interface AreaMapPin {
   activity: string; // aktivitas kunci
   progressNotes: string; // catatan perkembangan
   createdAt: string;
+  createdBy?: string;
 }
 
 export interface LocationData {

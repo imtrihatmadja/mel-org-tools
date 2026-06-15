@@ -20,9 +20,10 @@ interface LocalHubMapProps {
   location: LocationData;
   onUpdateLocation: (updated: LocationData) => void;
   isSuperAdmin: boolean;
+  currentUserEmail?: string;
 }
 
-export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin }: LocalHubMapProps) {
+export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, currentUserEmail }: LocalHubMapProps) {
   const [isAddingPin, setIsAddingPin] = useState(false);
   const [clickCoords, setClickCoords] = useState<{ x: number; y: number } | null>(null);
   const [activePin, setActivePin] = useState<AreaMapPin | null>(null);
@@ -146,7 +147,8 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin }
       workersReached: pinWorkers || 0,
       activity: pinActivity || 'Aktivitas pengorganisasian',
       progressNotes: pinNotes || '',
-      createdAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+      createdAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      createdBy: currentUserEmail || 'admin@dfw.or.id'
     };
 
     const updatedPins = [...(location.mapPins || []), newPin];
@@ -392,6 +394,11 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin }
                             </p>
                           </div>
                         )}
+
+                        <div className="text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg leading-relaxed flex items-center gap-1.5 border border-slate-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                          <span>Petugas Penginput: <strong className="font-bold text-slate-700">{pin.createdBy || 'Petugas Lapangan'}</strong></span>
+                        </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px] text-slate-405 font-medium">
                           <span className="flex items-center gap-1">
