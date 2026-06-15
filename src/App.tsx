@@ -242,10 +242,10 @@ export default function App() {
 
         finalStats = {
           ...loc.stats,
-          workersReached: Math.max(loc.stats.workersReached, workersReached),
-          championsCount: Math.max(loc.stats.championsCount, championsCount),
-          circleParticipants: Math.max(loc.stats.circleParticipants, Math.min(workersReached, finalCircleParticipants)),
-          organizationMembers: Math.max(loc.stats.organizationMembers, Math.min(workersReached, finalOrganizationMembers))
+          workersReached: loc.stats.workersReached > 0 ? loc.stats.workersReached : workersReached,
+          championsCount: loc.stats.championsCount > 0 ? loc.stats.championsCount : championsCount,
+          circleParticipants: loc.stats.circleParticipants > 0 ? loc.stats.circleParticipants : Math.min(workersReached, finalCircleParticipants),
+          organizationMembers: loc.stats.organizationMembers > 0 ? loc.stats.organizationMembers : Math.min(workersReached, finalOrganizationMembers)
         };
       } else {
         // Enforce update to championsCount in stats even if there are no general beneficiaries

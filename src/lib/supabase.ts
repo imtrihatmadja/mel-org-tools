@@ -5,7 +5,7 @@ import { LocationData, Case, Reflection, Champion, WorkerOrganization, Beneficia
 // JIKA INGIN INTEGRASI BERJALAN OTOMATIS BAGI SEMUA PENGUNJUNG TANPA PERLU MANUAL MENGATUR KUNCI:
 // Masukkan kredensial Supabase Anda di dua variabel DEFAULT di bawah ini.
 // (Sangat aman untuk Web App berbasis static client-side di mana Anon Key memang bersifat publik)
-const DEFAULT_SUPABASE_URL = "https://hhqaefonrqjztrihonkat.supabase.co" as string;
+const DEFAULT_SUPABASE_URL = "https://hhqaefonrqjztrhonkat.supabase.co" as string;
 const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhocWFlZm9ucnFqenRyaG9ua2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNDg1MDgsImV4cCI6MjA5NjgyNDUwOH0.RKfKBSWEtW3byEUunYy35dKS-vmwkuiyFwtc2Z63jtE" as string; // Masukkan Kunci Publik Anon Supabase Anda di sini
 
 export function getSupabaseConfig() {
