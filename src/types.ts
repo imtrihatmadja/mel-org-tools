@@ -69,6 +69,17 @@ export interface LocationStats {
   casesPending: number;
 }
 
+export interface AreaMapPin {
+  id: string;
+  x: number; // percentage (0-100) on the map image
+  y: number; // percentage (0-100) on the map image
+  label: string; // nama titik / posko
+  workersReached: number;
+  activity: string; // aktivitas kunci
+  progressNotes: string; // catatan perkembangan
+  createdAt: string;
+}
+
 export interface LocationData {
   id: string;
   name: string;
@@ -81,6 +92,8 @@ export interface LocationData {
   cases: Case[];
   reflections?: Reflection[];
   timeline: TimelineEvent[];
+  customMapImage?: string; // base64 or url for local hub map
+  mapPins?: AreaMapPin[]; // pins placed on the custom map
 }
 
 export interface HistoricalTrend {

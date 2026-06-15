@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import mockData from './data/mockData';
-import { LocationData, Case, IssueCategory, LocationStats, HistoricalTrend, Beneficiary, Champion, WorkerOrganization, Reflection } from './types';
+import { LocationData, Case, IssueCategory, LocationStats, HistoricalTrend, Beneficiary, Champion, WorkerOrganization, Reflection, AreaMapPin } from './types';
 import AdminShell from './components/AdminShell';
 import { fetchAllDataFromSupabase, supabase } from './lib/supabase';
 import IndonesiaMap from './components/IndonesiaMap';
@@ -15,6 +15,7 @@ import TimelineView from './components/TimelineView';
 import SimulationPanel from './components/SimulationPanel';
 import KPIEditModal from './components/KPIEditModal';
 import BeneficiariesList from './components/BeneficiariesList';
+import LocalHubMap from './components/LocalHubMap';
 import {
   Map,
   Layers,
@@ -171,7 +172,8 @@ export default function App() {
     championsCount: 0,
     organizationMembers: 0,
     casesCount: 0,
-    casesSolved: 0
+    casesSolved: 0,
+    customMapImage: undefined as string | undefined
   });
 
   const handlePresetChange = (presetName: string) => {
@@ -195,6 +197,18 @@ export default function App() {
   // Compute location stats where counts are dynamically computed from spreadsheet if it contains values
   const locationsWithDerivedStats = useMemo(() => {
     return locations.map(loc => {
+      // Muat peta kustom & pin dari localStorage untuk penggabungan
+      const cachedImage = localStorage.getItem(`DFW_MAP_IMAGE_${loc.id}`) || undefined;
+      const cachedPinsRaw = localStorage.getItem(`DFW_MAP_PINS_${loc.id}`);
+      let cachedPins: AreaMapPin[] = [];
+      if (cachedPinsRaw) {
+        try {
+          cachedPins = JSON.parse(cachedPinsRaw);
+        } catch (e) {
+          console.error("Gagal membaca cache pin peta", e);
+        }
+      }
+
       const hubBeneficiaries = beneficiaries.filter(b => b.locationId === loc.id);
       
       // Derive combined champions list from original champions and status-eligible beneficiaries
@@ -255,7 +269,9 @@ export default function App() {
       return {
         ...loc,
         stats: finalStats,
-        champions: combinedChampions
+        champions: combinedChampions,
+        customMapImage: cachedImage || loc.customMapImage,
+        mapPins: cachedPins.length > 0 ? cachedPins : (loc.mapPins || [])
       };
     });
   }, [locations, beneficiaries]);
@@ -1103,7 +1119,8 @@ export default function App() {
       championsCount: 0,
       organizationMembers: 0,
       casesCount: 0,
-      casesSolved: 0
+      casesSolved: 0,
+      customMapImage: undefined
     });
   };
 
@@ -1121,7 +1138,8 @@ export default function App() {
       championsCount: loc.stats.championsCount,
       organizationMembers: loc.stats.organizationMembers,
       casesCount: loc.stats.casesCount,
-      casesSolved: loc.stats.casesSolved
+      casesSolved: loc.stats.casesSolved,
+      customMapImage: loc.customMapImage
     });
     setIsAddLocationModalOpen(true);
   };
@@ -1160,11 +1178,15 @@ export default function App() {
       // Editing mode
       setLocations(prev => prev.map(loc => {
         if (loc.id === editingLocationId) {
+          if (addLocForm.customMapImage) {
+            localStorage.setItem(`DFW_MAP_IMAGE_${editingLocationId}`, addLocForm.customMapImage);
+          }
           return {
             ...loc,
             name: addLocForm.name,
             province: addLocForm.province,
             coordinates: { x: Number(addLocForm.x), y: Number(addLocForm.y) },
+            customMapImage: addLocForm.customMapImage || loc.customMapImage,
             stats: {
               ...loc.stats,
               workersReached: Number(addLocForm.workersReached) || 0,
@@ -1211,7 +1233,8 @@ export default function App() {
         championsCount: 2,
         organizationMembers: 45,
         casesCount: 2,
-        casesSolved: 1
+        casesSolved: 1,
+        customMapImage: undefined
       });
       return;
     }
@@ -1222,6 +1245,11 @@ export default function App() {
     if (locations.some(loc => loc.id === slugId)) {
       alert(`Wilayah Hub "${addLocForm.name}" sudah terdaftar! Gunakan nama yang berbeda.`);
       return;
+    }
+
+    // Persist custom Map Image locally
+    if (addLocForm.customMapImage) {
+      localStorage.setItem(`DFW_MAP_IMAGE_${slugId}`, addLocForm.customMapImage);
     }
 
     const newLoc: LocationData = {
@@ -1257,7 +1285,9 @@ export default function App() {
           description: `Pembentukan posko pengaduan bersama dan pemantauan hak asasi awak kapal perikanan di pelabuhan ${addLocForm.name}, ${addLocForm.province}.`,
           category: "organisasi"
         }
-      ]
+      ],
+      customMapImage: addLocForm.customMapImage || undefined,
+      mapPins: []
     };
 
     setLocations(prev => [...prev, newLoc]);
@@ -1298,7 +1328,8 @@ export default function App() {
       championsCount: 2,
       organizationMembers: 45,
       casesCount: 2,
-      casesSolved: 1
+      casesSolved: 1,
+      customMapImage: undefined
     });
 
     // Navigate to see the newly created hub detail view!
@@ -1440,6 +1471,7 @@ export default function App() {
               onAddCase={handleAddCase}
               locationsList={locationsList}
               issueCategories={issueCategories}
+              isSuperAdmin={isLoggedIn}
               onOpenAddReflection={() => {
                 // If on national tab, select the first location so there's an active context to append the reflection to!
                 if (!selectedLocationId && locations.length > 0) {
@@ -1564,6 +1596,17 @@ export default function App() {
           </div>
           {activeLocation && <KPICards stats={activeLocation.stats} isNational={false} />}
 
+          {/* Localized Geospatial HUB Area Map & Pin board */}
+          {activeLocation && (
+            <LocalHubMap
+              location={activeLocation}
+              onUpdateLocation={(updated) => {
+                setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+              }}
+              isSuperAdmin={isLoggedIn}
+            />
+          )}
+
           {/* Custom Navigation Tab Headers */}
           <div className="border-b border-slate-200 flex items-center gap-2 md:gap-4 overflow-x-auto pb-0.5">
             <button
@@ -1620,6 +1663,7 @@ export default function App() {
                       onAddCase={handleAddCase}
                       locationsList={[{ id: activeLocation.id, name: activeLocation.name }]}
                       issueCategories={issueCategories}
+                      isSuperAdmin={isLoggedIn}
                       onOpenAddReflection={() => setForceAddReflection(true)}
                     />
                   )}
@@ -1645,6 +1689,95 @@ export default function App() {
                       onResetForceAdd={() => setForceAddReflection(false)}
                       isSuperAdmin={isLoggedIn}
                     />
+                  </div>
+
+                  {/* Daftar Titik Penjangkauan & Aktivitas Lapangan (Peta Hub) */}
+                  <div className="bg-white border border-slate-200/95 rounded-2xl shadow-xs overflow-hidden mt-6" id="local-map-pins-list-container">
+                    <div className="px-5 py-4 bg-slate-50 border-b border-slate-150 flex items-center justify-between">
+                      <div>
+                        <h4 className="font-extrabold text-xs md:text-sm text-slate-900 uppercase tracking-tight flex items-center gap-1.5 font-sans">
+                          <MapPin className="w-4 h-4 text-indigo-600" />
+                          Daftar Titik Penjangkauan & Aktivitas Lapangan (Berdasarkan Pin Peta)
+                        </h4>
+                        <p className="text-[10px] text-slate-500 font-sans mt-0.5">
+                          Menunjukkan cakupan penjangkauan, kegiatan sosialisasi regulasi laut, dan pendampingan ABK di setiap titik zonasi pelabuhan.
+                        </p>
+                      </div>
+                      <span className="text-[10px] bg-slate-105 text-slate-600 border border-slate-200 font-bold px-2.5 py-0.5 rounded-full font-mono">
+                        {(activeLocation.mapPins || []).length} Titik Ditandai
+                      </span>
+                    </div>
+
+                    <div className="p-5">
+                      {(!activeLocation.mapPins || activeLocation.mapPins.length === 0) ? (
+                        <div className="text-center py-8 text-slate-400 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl font-sans">
+                          <MapPin className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-xs font-semibold text-slate-705">Belum ada titik aktivitas yang ditandai pada peta di atas.</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Silakan klik sembarang area pada panel peta di bagian atas untuk menaruh titik pin pertama Anda.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs font-sans text-slate-800">
+                            <thead>
+                              <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-450 uppercase tracking-wider bg-slate-50/40">
+                                <th className="py-2.5 px-4 font-sans text-left">Nama Titik / Sektor</th>
+                                <th className="py-2.5 px-4 text-left">Letak Koordinat</th>
+                                <th className="py-2.5 px-4 font-sans text-left">Pekerja Dijangkau</th>
+                                <th className="py-2.5 px-4 text-left">Aktivitas Utama</th>
+                                <th className="py-2.5 px-4 font-sans text-left">Catatan Perkembangan</th>
+                                {isLoggedIn && <th className="py-2.5 px-4 text-right">Aksi</th>}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                              {activeLocation.mapPins.map((pin) => (
+                                <tr key={pin.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="py-2.5 px-4 font-bold text-indigo-950 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                      {pin.label}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-4 font-mono text-[10px] text-slate-500 whitespace-nowrap">
+                                    X: {pin.x}% | Y: {pin.y}%
+                                  </td>
+                                  <td className="py-2.5 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full font-mono">
+                                      <Users className="w-3 h-3 text-emerald-600 hover:text-emerald-700" />
+                                      {pin.workersReached} ABK
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-4 max-w-xs truncate text-[11px] font-semibold text-slate-700" title={pin.activity}>
+                                    {pin.activity}
+                                  </td>
+                                  <td className="py-2.5 px-4 max-w-xs truncate text-slate-500 text-[11px] font-normal" title={pin.progressNotes}>
+                                    {pin.progressNotes || '-'}
+                                  </td>
+                                  {isLoggedIn && (
+                                    <td className="py-2.5 px-4 text-right whitespace-nowrap text-xs">
+                                      <button
+                                        onClick={() => {
+                                          if (!confirm("Hapus titik aktivitas di lokasi ini?")) return;
+                                          const filteredPins = (activeLocation.mapPins || []).filter(p => p.id !== pin.id);
+                                          const updatedLoc = { ...activeLocation, mapPins: filteredPins };
+                                          // Update state
+                                          setLocations(prev => prev.map(l => l.id === updatedLoc.id ? updatedLoc : l));
+                                          localStorage.setItem(`DFW_MAP_PINS_${activeLocation.id}`, JSON.stringify(filteredPins));
+                                        }}
+                                        className="p-1 px-2.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-0.5 font-bold font-sans text-[10px]"
+                                        title="Hapus Titik Pin"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                        Hapus
+                                      </button>
+                                    </td>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               )}
@@ -1788,6 +1921,46 @@ export default function App() {
                     className="w-full text-xs px-3 py-2 border border-slate-250 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-hidden text-slate-800 font-medium"
                   />
                 </div>
+              </div>
+
+              {/* Upload Map Image Field */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                  Unggah Peta Zonasi / Port Kustom (.PNG/.JPG)
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setAddLocForm(prev => ({ ...prev, customMapImage: reader.result as string }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="block w-full text-xs text-slate-550 file:mr-4 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 p-1.5 rounded-lg bg-slate-50/50"
+                  />
+                  {addLocForm.customMapImage && (
+                    <div className="relative w-12 h-12 border border-slate-250 rounded-lg overflow-hidden shrink-0 bg-slate-50 shadow-xs">
+                      <img src={addLocForm.customMapImage} className="w-full h-full object-cover" alt="Preview Peta" />
+                      <button 
+                        type="button"
+                        onClick={() => setAddLocForm(prev => ({ ...prev, customMapImage: undefined }))}
+                        className="absolute inset-0 bg-black/60 text-white font-bold text-[9px] flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                        title="Hapus"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400 block mt-1 leading-normal">
+                  Opsional. Anda dapat mengunggah denah dermaga/posko untuk menaruh pin detail sebaran aktivitas lokal.
+                </span>
               </div>
 
               {/* Coordinates configuration sliders */}
