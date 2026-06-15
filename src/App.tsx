@@ -242,14 +242,14 @@ export default function App() {
 
         finalStats = {
           ...loc.stats,
-          workersReached,
-          championsCount,
-          circleParticipants: Math.min(workersReached, finalCircleParticipants),
-          organizationMembers: Math.min(workersReached, finalOrganizationMembers)
+          workersReached: Math.max(loc.stats.workersReached, workersReached),
+          championsCount: Math.max(loc.stats.championsCount, championsCount),
+          circleParticipants: Math.max(loc.stats.circleParticipants, Math.min(workersReached, finalCircleParticipants)),
+          organizationMembers: Math.max(loc.stats.organizationMembers, Math.min(workersReached, finalOrganizationMembers))
         };
       } else {
         // Enforce update to championsCount in stats even if there are no general beneficiaries
-        finalStats.championsCount = combinedChampions.length;
+        finalStats.championsCount = Math.max(loc.stats.championsCount, combinedChampions.length);
       }
 
       return {
