@@ -609,7 +609,7 @@ export default function App() {
   const nationalReflections = useMemo(() => {
     let list: (Reflection & { locationId: string; locationName: string })[] = [];
     locationsWithDerivedStats.forEach(loc => {
-      const currentReflections = loc.reflections || [];
+      const currentReflections = (loc.reflections || []).filter(r => r.category !== 'ShelterDailyLog');
       const prefixedReflections = currentReflections.map(r => ({
         ...r,
         locationId: loc.id,
@@ -1805,7 +1805,7 @@ export default function App() {
 
                     {/* Reflections & Learnings */}
                     <ReflectionsList
-                      reflections={activeLocation.reflections || []}
+                      reflections={(activeLocation.reflections || []).filter(r => r.category !== 'ShelterDailyLog')}
                       onAddReflection={(newRef) => handleAddReflection(activeLocation.id, newRef)}
                       onUpdateReflection={(refId, updated) => handleUpdateReflection(activeLocation.id, refId, updated)}
                       onDeleteReflection={(refId) => handleDeleteReflection(activeLocation.id, refId)}
