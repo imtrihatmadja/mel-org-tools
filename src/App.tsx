@@ -263,48 +263,49 @@ export default function App() {
         }
       });
 
-      // Default counts or overridden dynamically if beneficiaries list exists
-      let finalStats = { ...loc.stats };
+      const resolvedPins = supabase ? (loc.mapPins || []) : (cachedPins.length > 0 ? cachedPins : (loc.mapPins || []));
+      const totalPinsWorkersReached = (resolvedPins || []).reduce((sum, pin) => sum + (pin.workersReached || 0), 0);
+      const excelWorkersCount = hubBeneficiaries.length;
 
-      if (hubBeneficiaries.length > 0) {
-        const workersReached = hubBeneficiaries.length;
-        // Count total champions based on combined list length
-        const championsCount = combinedChampions.length;
-        
-        // Derive circleParticipants & organizationMembers proportional or based on contents
-        const circleParticipantsCount = hubBeneficiaries.filter(b => 
-          b.category === 'Champion' || 
-          b.notes.toLowerCase().includes('belajar') || 
-          b.notes.toLowerCase().includes('lingkaran')
-        ).length;
-
-        const organizationMembersCount = hubBeneficiaries.filter(b => 
-          b.notes.toLowerCase().includes('serikat') || 
-          b.notes.toLowerCase().includes('sppi') || 
-          b.notes.toLowerCase().includes('anggota')
-        ).length;
-
-        const finalCircleParticipants = Math.max(Math.round(workersReached * 0.15) + circleParticipantsCount * 2, circleParticipantsCount);
-        const finalOrganizationMembers = Math.max(Math.round(workersReached * 0.35) + organizationMembersCount, organizationMembersCount);
-
-        finalStats = {
-          ...loc.stats,
-          workersReached: loc.stats.workersReached > 0 ? loc.stats.workersReached : workersReached,
-          championsCount: loc.stats.championsCount > 0 ? loc.stats.championsCount : championsCount,
-          circleParticipants: loc.stats.circleParticipants > 0 ? loc.stats.circleParticipants : Math.min(workersReached, finalCircleParticipants),
-          organizationMembers: loc.stats.organizationMembers > 0 ? loc.stats.organizationMembers : Math.min(workersReached, finalOrganizationMembers)
-        };
-      } else {
-        // Enforce update to championsCount in stats even if there are no general beneficiaries
-        finalStats.championsCount = Math.max(loc.stats.championsCount, combinedChampions.length);
+      // Total Pekerja = Pekerja Excel (Spreadsheet) + Pekerja di Pin Peta
+      let computedWorkersReached = excelWorkersCount + totalPinsWorkersReached;
+      if (computedWorkersReached === 0 && loc.stats.workersReached > 0) {
+        computedWorkersReached = loc.stats.workersReached;
       }
+
+      // Hitung champions pelopor secara terakumulasi
+      const championsCount = combinedChampions.length;
+      
+      // Hitung segmen partisipan dan anggota serikat dari spreadsheet excel
+      const circleParticipantsCount = hubBeneficiaries.filter(b => 
+        b.category === 'Champion' || 
+        b.notes.toLowerCase().includes('belajar') || 
+        b.notes.toLowerCase().includes('lingkaran')
+      ).length;
+
+      const organizationMembersCount = hubBeneficiaries.filter(b => 
+        b.notes.toLowerCase().includes('serikat') || 
+        b.notes.toLowerCase().includes('sppi') || 
+        b.notes.toLowerCase().includes('anggota')
+      ).length;
+
+      const finalCircleParticipants = Math.max(Math.round(computedWorkersReached * 0.15) + circleParticipantsCount * 2, circleParticipantsCount);
+      const finalOrganizationMembers = Math.max(Math.round(computedWorkersReached * 0.35) + organizationMembersCount, organizationMembersCount);
+
+      const finalStats = {
+        ...loc.stats,
+        workersReached: computedWorkersReached,
+        championsCount: loc.stats.championsCount > 0 ? Math.max(loc.stats.championsCount, championsCount) : championsCount,
+        circleParticipants: loc.stats.circleParticipants > 0 ? loc.stats.circleParticipants : Math.min(computedWorkersReached, finalCircleParticipants),
+        organizationMembers: loc.stats.organizationMembers > 0 ? loc.stats.organizationMembers : Math.min(computedWorkersReached, finalOrganizationMembers)
+      };
 
       return {
         ...loc,
         stats: finalStats,
         champions: combinedChampions,
         customMapImage: supabase ? (loc.customMapImage || cachedImage) : (cachedImage || loc.customMapImage),
-        mapPins: supabase ? (loc.mapPins || []) : (cachedPins.length > 0 ? cachedPins : (loc.mapPins || []))
+        mapPins: resolvedPins
       };
     });
   }, [locations, beneficiaries]);
@@ -2328,11 +2329,50 @@ export default function App() {
             {/* Content info */}
             <div className="p-5 space-y-4 text-left">
               <div className="text-[11px] text-slate-600 leading-relaxed bg-indigo-50/50 border border-indigo-100/60 rounded-xl p-3.5 space-y-1">
-                <p className="font-extrabold text-indigo-900">🔒 Akses Dibatasi Koordinator Lapangan</p>
-                <p>Gunakan akun Google terdaftar untuk mengizinkan perubahan data spasial, kpi capaian wilayah baru, dan pengelolaan kasus terpusat.</p>
+                <p className="font-extrabold text-indigo-900">🔒 Akses Koordinator Lapangan</p>
+                <p>Gunakan sandi koordinator atau masuk dengan Google untuk mengizinkan input data spasial, capaian kuantitatif, dan manajemen kasus.</p>
               </div>
 
-              <div className="space-y-3 pt-1">
+              {/* Metode 1: Sandi Instan */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (authPasswordInput === superadminPassword) {
+                    setIsLoggedIn(true);
+                    setCurrentUserEmail('admin@dfw.or.id');
+                    setIsAuthModalOpen(false);
+                    setAuthError('');
+                    setAuthPasswordInput('');
+                  } else {
+                    setAuthError('Kata sandi salah! Masukkan "admin123" atau sandi khusus Anda.');
+                  }
+                }}
+                className="space-y-2 border-t border-slate-100 pt-3"
+              >
+                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Metode 1: Sandi Akses Instan (Bypass Sandbox)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    placeholder="Sandi default: admin123"
+                    value={authPasswordInput}
+                    onChange={(e) => setAuthPasswordInput(e.target.value)}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-505"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Masuk
+                  </button>
+                </div>
+                {authError && (
+                  <p className="text-[10px] text-red-600 font-medium">{authError}</p>
+                )}
+              </form>
+
+              {/* Metode 2: Google Sign-In */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Metode 2: Integrasi Akun Cloud</label>
                 <button
                   type="button"
                   onClick={async () => {
@@ -2352,15 +2392,15 @@ export default function App() {
                       alert("Gagal menginisiasi OAuth Google via Supabase: " + err.message);
                     }
                   }}
-                  className={`w-full inline-flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-sm hover:shadow-md border active:scale-[0.98] ${supabase ? 'bg-indigo-600 hover:bg-indigo-750 border-indigo-700 hover:border-indigo-800' : 'bg-slate-450 hover:bg-slate-500 border-slate-500'}`}
+                  className={`w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all cursor-pointer shadow-sm hover:shadow-md border active:scale-[0.98] ${supabase ? 'bg-indigo-600 hover:bg-indigo-750 border-indigo-700 hover:border-indigo-800' : 'bg-slate-400 hover:bg-slate-500 border-slate-500 cursor-not-allowed'}`}
                 >
                   <Chrome className="w-4 h-4 text-white" />
                   Masuk dengan Google
                 </button>
                 <p className="text-[9px] text-center text-slate-400 font-sans leading-normal">
                   {supabase 
-                    ? "✓ Server Supabase terhubung. Email Google Anda otomatis divalidasi sebagai administrator." 
-                    : "⚠️ Mode Demo Offline. Klik 'Atur' di sidebar kiri untuk menghubungkan DB Anda agar login Google ini dapat berjalan aktif."
+                    ? "✓ Server Supabase terhubung. Akun Google Anda divalidasi langsung secara cloud." 
+                    : "⚠️ Mode Demo Offline. Hubungkan Supabase Anda terlebih dahulu agar fitur Google OAuth aktif."
                   }
                 </p>
               </div>
