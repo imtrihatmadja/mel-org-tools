@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import mockData from './data/mockData';
 import { LocationData, Case, IssueCategory, LocationStats, HistoricalTrend, Beneficiary, Champion, WorkerOrganization, Reflection, AreaMapPin } from './types';
 import AdminShell from './components/AdminShell';
-import { fetchAllDataFromSupabase, supabase } from './lib/supabase';
+import { fetchAllDataFromSupabase, supabase, encodeOrgName, decodeOrgName } from './lib/supabase';
 import IndonesiaMap from './components/IndonesiaMap';
 import KPICards from './components/KPICards';
 import { compressImage, getBase64Size } from './lib/compress';
@@ -1039,13 +1039,10 @@ export default function App() {
       try {
         const { error } = await supabase.from('organizations').insert({
           location_id: locId,
-          name: org.name,
+          name: encodeOrgName(org),
           type: org.type,
           established: org.established,
-          members: org.members,
-          pic_name: org.picName,
-          pic_phone: org.picPhone,
-          pic_socials: org.picSocials
+          members: org.members
         });
 
         if (error) {
@@ -1062,7 +1059,8 @@ export default function App() {
 
   const handleUpdateOrganization = async (locId: string, index: number, updatedOrg: WorkerOrganization) => {
     const currentLoc = locations.find(l => l.id === locId);
-    const oldOrgName = currentLoc?.organizations[index]?.name;
+    const oldOrg = currentLoc?.organizations[index];
+    const oldDbName = oldOrg ? encodeOrgName(oldOrg) : '';
 
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
@@ -1080,17 +1078,14 @@ export default function App() {
       });
     });
 
-    if (supabase && oldOrgName) {
+    if (supabase && oldDbName) {
       try {
         const { error } = await supabase.from('organizations').update({
-          name: updatedOrg.name,
+          name: encodeOrgName(updatedOrg),
           type: updatedOrg.type,
           established: updatedOrg.established,
-          members: updatedOrg.members,
-          pic_name: updatedOrg.picName,
-          pic_phone: updatedOrg.picPhone,
-          pic_socials: updatedOrg.picSocials
-        }).match({ location_id: locId, name: oldOrgName });
+          members: updatedOrg.members
+        }).match({ location_id: locId, name: oldDbName });
 
         if (error) {
           console.error("Gagal memperbarui organisasi di Supabase:", error);
@@ -1106,7 +1101,8 @@ export default function App() {
 
   const handleDeleteOrganization = async (locId: string, index: number) => {
     const currentLoc = locations.find(l => l.id === locId);
-    const oldOrgName = currentLoc?.organizations[index]?.name;
+    const oldOrg = currentLoc?.organizations[index];
+    const oldDbName = oldOrg ? encodeOrgName(oldOrg) : '';
 
     setLocations(prevLocations => {
       return prevLocations.map(loc => {
@@ -1124,9 +1120,9 @@ export default function App() {
       });
     });
 
-    if (supabase && oldOrgName) {
+    if (supabase && oldDbName) {
       try {
-        const { error } = await supabase.from('organizations').delete().match({ location_id: locId, name: oldOrgName });
+        const { error } = await supabase.from('organizations').delete().match({ location_id: locId, name: oldDbName });
         if (error) {
           console.error("Gagal menghapus organisasi dari Supabase:", error);
           alert("Gagal menghapus organisasi dari Supabase: " + error.message);

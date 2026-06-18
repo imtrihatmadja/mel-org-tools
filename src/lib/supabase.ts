@@ -82,6 +82,49 @@ export interface SyncStatus {
 }
 
 /**
+ * Mengasimilasi data PIC ke dalam nama organisasi untuk fleksibilitas skema database tanpa alter DDL
+ */
+export function encodeOrgName(org: WorkerOrganization): string {
+  const parts = [org.name];
+  if (org.picName || org.picPhone || org.picSocials) {
+    const picData = {
+      n: org.picName || '',
+      p: org.picPhone || '',
+      s: org.picSocials || ''
+    };
+    parts.push(JSON.stringify(picData));
+  }
+  return parts.join(' <<<PIC>>> ');
+}
+
+/**
+ * Mengekstrak balik data nama dan PIC organisasi dari kolom nama ter-encode
+ */
+export function decodeOrgName(rawName: string): { name: string, picName: string, picPhone: string, picSocials: string } {
+  if (!rawName) {
+    return { name: '', picName: '', picPhone: '', picSocials: '' };
+  }
+  const splitMarker = ' <<<PIC>>> ';
+  if (rawName.includes(splitMarker)) {
+    const parts = rawName.split(splitMarker);
+    const name = parts[0];
+    const picJson = parts[1];
+    try {
+      const data = JSON.parse(picJson);
+      return {
+        name: name || '',
+        picName: data.n || '',
+        picPhone: data.p || '',
+        picSocials: data.s || ''
+      };
+    } catch (e) {
+      return { name: name || '', picName: picJson || '', picPhone: '', picSocials: '' };
+    }
+  }
+  return { name: rawName, picName: '', picPhone: '', picSocials: '' };
+}
+
+/**
  * Membaca seluruh data dari Supabase secara terintegrasi dan paralel.
  * Mengembalikan objek berisi seluruh entitas yang sesuai dengan type sistem React kita.
  */
@@ -152,15 +195,18 @@ export async function fetchAllDataFromSupabase(): Promise<{
       const filteredRefs = rawRefs.filter((r: any) => r.location_id === id);
       const filteredTimeline = rawTimeline.filter((t: any) => t.location_id === id);
 
-      const mappingOrgs: WorkerOrganization[] = filteredOrgs.map((o: any) => ({
-        name: o.name,
-        type: o.type,
-        established: o.established || 2020,
-        members: o.members || 0,
-        picName: o.pic_name || o.picName || '',
-        picPhone: o.pic_phone || o.picPhone || '',
-        picSocials: o.pic_socials || o.picSocials || ''
-      }));
+      const mappingOrgs: WorkerOrganization[] = filteredOrgs.map((o: any) => {
+        const decoded = decodeOrgName(o.name || '');
+        return {
+          name: decoded.name || o.name || '',
+          type: o.type,
+          established: o.established || 2020,
+          members: o.members || 0,
+          picName: decoded.picName || o.pic_name || o.picName || '',
+          picPhone: decoded.picPhone || o.pic_phone || o.picPhone || '',
+          picSocials: decoded.picSocials || o.pic_socials || o.picSocials || ''
+        };
+      });
 
       const mappingChamps: Champion[] = filteredChamps.map((c: any) => ({
         name: c.name,
