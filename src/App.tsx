@@ -5,6 +5,7 @@ import AdminShell from './components/AdminShell';
 import { fetchAllDataFromSupabase, supabase } from './lib/supabase';
 import IndonesiaMap from './components/IndonesiaMap';
 import KPICards from './components/KPICards';
+import { compressImage, getBase64Size } from './lib/compress';
 import Charts from './components/Charts';
 import CasesList from './components/CasesList';
 import ReflectionsList from './components/ReflectionsList';
@@ -68,6 +69,7 @@ export default function App() {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [yearFilter, setYearFilter] = useState<number>(2026);
   const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
+  const [modalCompInfo, setModalCompInfo] = useState<string | null>(null);
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
   const [forceAddReflection, setForceAddReflection] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -1149,6 +1151,7 @@ export default function App() {
   const closeAddLocationModal = () => {
     setIsAddLocationModalOpen(false);
     setEditingLocationId(null);
+    setModalCompInfo(null);
     setAddLocForm({
       preset: '',
       name: '',
@@ -2068,11 +2071,30 @@ export default function App() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setAddLocForm(prev => ({ ...prev, customMapImage: reader.result as string }));
-                        };
-                        reader.readAsDataURL(file);
+                        if (file.size > 12 * 1024 * 1024) {
+                          alert("Ukuran file melebihi batas 12MB. Pilih file gambar yang lebih kecil.");
+                          return;
+                        }
+
+                        const originalSizeStr = (file.size / 1024).toFixed(1) + " KB";
+                        setModalCompInfo("Sedang mengompresi...");
+
+                        compressImage(file, 1200, 1200, 0.7)
+                          .then((compressedBase64) => {
+                            const compSizeKb = Math.ceil((compressedBase64.length - compressedBase64.indexOf(',') - 1) * 3 / 4) / 1024;
+                            const savings = (((file.size / 1024) - compSizeKb) / (file.size / 1024) * 100).toFixed(0);
+                            setModalCompInfo(`Kompresi berhasil: ${originalSizeStr} → ${compSizeKb.toFixed(1)} KB (Hemat ${savings}%)`);
+                            setAddLocForm(prev => ({ ...prev, customMapImage: compressedBase64 }));
+                          })
+                          .catch((err) => {
+                            console.error("Gagal kompresi:", err);
+                            setModalCompInfo("Menggunakan file asli...");
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setAddLocForm(prev => ({ ...prev, customMapImage: reader.result as string }));
+                            };
+                            reader.readAsDataURL(file);
+                          });
                       }
                     }}
                     className="block w-full text-xs text-slate-550 file:mr-4 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 p-1.5 rounded-lg bg-slate-50/50"
@@ -2082,7 +2104,10 @@ export default function App() {
                       <img src={addLocForm.customMapImage} className="w-full h-full object-cover" alt="Preview Peta" />
                       <button 
                         type="button"
-                        onClick={() => setAddLocForm(prev => ({ ...prev, customMapImage: undefined }))}
+                        onClick={() => {
+                          setAddLocForm(prev => ({ ...prev, customMapImage: undefined }));
+                          setModalCompInfo(null);
+                        }}
                         className="absolute inset-0 bg-black/60 text-white font-bold text-[9px] flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
                         title="Hapus"
                       >
@@ -2091,6 +2116,11 @@ export default function App() {
                     </div>
                   )}
                 </div>
+                {modalCompInfo && (
+                  <span className="text-[10px] text-emerald-600 block mt-1 font-medium bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100 self-start animate-fade-in">
+                    ⚡ {modalCompInfo}
+                  </span>
+                )}
                 <span className="text-[10px] text-slate-400 block mt-1 leading-normal">
                   Opsional. Anda dapat mengunggah denah dermaga/posko untuk menaruh pin detail sebaran aktivitas lokal.
                 </span>

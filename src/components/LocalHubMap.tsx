@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { LocationData, AreaMapPin } from '../types';
 import { supabase } from '../lib/supabase';
+import { compressImage, getBase64Size } from '../lib/compress';
 
 interface LocalHubMapProps {
   location: LocationData;
@@ -61,6 +62,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
   const [clickCoords, setClickCoords] = useState<{ x: number; y: number } | null>(null);
   const [activePin, setActivePin] = useState<AreaMapPin | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [compressionInfo, setCompressionInfo] = useState<string | null>(null);
 
   // Form Fields for New Pin
   const [pinLabel, setPinLabel] = useState('');
@@ -72,37 +74,70 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
   const handleMapImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Ukuran file terlalu besar! Silakan gunakan file berukuran di bawah 2MB.");
-        return;
+      if (file.size > 12 * 1024 * 1024) {
+        alert("Ukuran file terlalu besar! Maksimal ukuran file adalah 12MB. Sistem akan melakukan kompresi otomatis untuk menghemat bandwidth.");
+         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        onUpdateLocation({
-          ...location,
-          customMapImage: base64String
-        });
-        
-        // Simpan ke localStorage agar tidak ter-reset
-        localStorage.setItem(`DFW_MAP_IMAGE_${location.id}`, base64String);
-        setLoadedMapImage(base64String);
+      
+      const originalSizeStr = (file.size / 1024).toFixed(1) + " KB";
+      setCompressionInfo("Sedang mengompresi gambar...");
 
-        // Simpan ke Supabase jika login
-        if (supabase) {
-          supabase.from('reflections').upsert({
-            id: `PETA-${location.id}`,
-            location_id: location.id,
-            title: `PETA_KUSTOM_${location.id}`,
-            category: 'PETA_KUSTOM',
-            content: base64String,
-            author: 'Sistem Geospasial'
-          }).then(({ error }) => {
-            if (error) console.error("Gagal menyimpan peta kustom ke Supabase:", error);
+      compressImage(file, 1200, 1200, 0.7)
+        .then((compressedBase64) => {
+          const compSizeKb = Math.ceil((compressedBase64.length - compressedBase64.indexOf(',') - 1) * 3 / 4) / 1024;
+          const savings = (((file.size / 1024) - compSizeKb) / (file.size / 1024) * 100).toFixed(0);
+          
+          setCompressionInfo(`Sukses kompresi: ${originalSizeStr} → ${compSizeKb.toFixed(1)} KB (Hemat ${savings}% penyimpanan/egress)`);
+
+          onUpdateLocation({
+            ...location,
+            customMapImage: compressedBase64
           });
-        }
-      };
-      reader.readAsDataURL(file);
+          
+          // Simpan ke localStorage agar tidak ter-reset
+          localStorage.setItem(`DFW_MAP_IMAGE_${location.id}`, compressedBase64);
+          setLoadedMapImage(compressedBase64);
+
+          // Simpan ke Supabase jika login
+          if (supabase) {
+            supabase.from('reflections').upsert({
+              id: `PETA-${location.id}`,
+              location_id: location.id,
+              title: `PETA_KUSTOM_${location.id}`,
+              category: 'PETA_KUSTOM',
+              content: compressedBase64,
+              author: 'Sistem Geospasial'
+            }).then(({ error }) => {
+              if (error) console.error("Gagal menyimpan peta kustom ke Supabase:", error);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Gagal mengompresi gambar:", err);
+          setCompressionInfo("Gagal kompresi, menggunakan fallback file asli...");
+          // Fallback to normal FileReader
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            onUpdateLocation({
+              ...location,
+              customMapImage: base64String
+            });
+            localStorage.setItem(`DFW_MAP_IMAGE_${location.id}`, base64String);
+            setLoadedMapImage(base64String);
+            if (supabase) {
+              supabase.from('reflections').upsert({
+                id: `PETA-${location.id}`,
+                location_id: location.id,
+                title: `PETA_KUSTOM_${location.id}`,
+                category: 'PETA_KUSTOM',
+                content: base64String,
+                author: 'Sistem Geospasial'
+              }).then();
+            }
+          };
+          reader.readAsDataURL(file);
+        });
     }
   };
 
@@ -309,6 +344,21 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
       {/* Main Content Layout Grid */}
       <div className="p-5 font-sans">
         
+        {compressionInfo && (
+          <div className="mb-4 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-150 rounded-xl py-2.5 px-4 flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-1">
+            <span className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>⚡ {compressionInfo}</span>
+            </span>
+            <button 
+              onClick={() => setCompressionInfo(null)} 
+              className="text-emerald-500 hover:text-emerald-700 font-bold text-[10px] uppercase cursor-pointer hover:bg-emerald-100/50 py-1 px-2 rounded-md transition-colors"
+            >
+              Oke
+            </button>
+          </div>
+        )}
+
         {/* Map Stage Frame */}
         <div className="relative mb-6">
           <div 
