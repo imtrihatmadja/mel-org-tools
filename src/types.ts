@@ -116,6 +116,27 @@ export interface Beneficiary {
   notes: string;
 }
 
+export interface ShelterWorker {
+  id: string;
+  locationId: string;
+  name: string;
+  identityNo: string;
+  origin: string;
+  contact: string;
+  createdAt: string;
+}
+
+export interface ShelterDailyLog {
+  id: string;
+  locationId: string;
+  workerId: string;
+  date: string;
+  checkIn?: string;
+  checkOut?: string;
+  status: 'Hadir' | 'Sakit' | 'Izin' | 'Keluar';
+  notes?: string;
+}
+
 export interface GlobalMockData {
   locations: LocationData[];
   nationalTrend: HistoricalTrend[];

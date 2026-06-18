@@ -17,6 +17,7 @@ import SimulationPanel from './components/SimulationPanel';
 import KPIEditModal from './components/KPIEditModal';
 import BeneficiariesList from './components/BeneficiariesList';
 import LocalHubMap from './components/LocalHubMap';
+import ShelterLogView from './components/ShelterLogView';
 import {
   Map,
   Layers,
@@ -38,7 +39,8 @@ import {
   ShieldAlert,
   Lock,
   Key,
-  Chrome
+  Chrome,
+  Home
 } from 'lucide-react';
 
 const PRESET_PORTS = [
@@ -394,8 +396,8 @@ export default function App() {
     }
   };
   
-  // Location specific tab selection state: 'overview' | 'activism' | 'history'
-  const [locationTab, setLocationTab] = useState<'overview' | 'activism' | 'history'>('overview');
+  // Location specific tab selection state: 'overview' | 'activism' | 'history' | 'shelter'
+  const [locationTab, setLocationTab] = useState<'overview' | 'activism' | 'history' | 'shelter'>('overview');
 
   // KPI Edit & Accumulate Modal State
   const [isKPIModalOpen, setIsKPIModalOpen] = useState(false);
@@ -1743,6 +1745,17 @@ export default function App() {
               Kader (Champions) & Serikat Mitra ({activeLocation?.champions.length || 0})
             </button>
             <button
+              onClick={() => setLocationTab('shelter')}
+              className={`flex items-center gap-2 py-3 px-4 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
+                locationTab === 'shelter'
+                  ? 'border-blue-600 text-blue-600 font-extrabold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Home className="w-4 h-4 text-orange-500" />
+              Log Shelter
+            </button>
+            <button
               onClick={() => setLocationTab('history')}
               className={`flex items-center gap-2 py-3 px-4 text-xs font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
                 locationTab === 'history'
@@ -1941,6 +1954,14 @@ export default function App() {
                     isSuperAdmin={isLoggedIn}
                   />
                 </div>
+              )}
+
+              {locationTab === 'shelter' && (
+                <ShelterLogView
+                  locationId={activeLocation.id}
+                  locationName={activeLocation.name}
+                  isSuperAdmin={isLoggedIn}
+                />
               )}
 
               {locationTab === 'history' && (
