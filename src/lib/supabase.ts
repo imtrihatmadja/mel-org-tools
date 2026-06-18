@@ -108,7 +108,7 @@ export async function fetchAllDataFromSupabase(): Promise<{
       supabase.from('organizations').select('*'),
       supabase.from('champions').select('*'),
       supabase.from('cases').select('*'),
-      supabase.from('reflections').select('*'),
+      supabase.from('reflections').select('*').neq('category', 'PETA_KUSTOM'),
       supabase.from('timeline_events').select('*'),
       supabase.from('beneficiaries').select('*'),
       supabase.from('national_trend').select('*'),

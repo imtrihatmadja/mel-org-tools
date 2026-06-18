@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   MapPin, 
   Upload, 
@@ -24,6 +24,39 @@ interface LocalHubMapProps {
 }
 
 export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, currentUserEmail }: LocalHubMapProps) {
+  const [loadedMapImage, setLoadedMapImage] = useState<string | undefined>(undefined);
+  const [isLoadingMap, setIsLoadingMap] = useState(false);
+
+  useEffect(() => {
+    // 1. Ambil dari cache localStorage secepatnya agar instan (zero flicker)
+    const cached = localStorage.getItem(`DFW_MAP_IMAGE_${location.id}`);
+    setLoadedMapImage(cached || undefined);
+
+    // 2. Muat dari Supabase secara lazy / on-demand pasca komponen di-mount atau berganti wilayah
+    if (supabase) {
+      setIsLoadingMap(true);
+      supabase.from('reflections')
+        .select('content')
+        .eq('location_id', location.id)
+        .eq('category', 'PETA_KUSTOM')
+        .maybeSingle()
+        .then(({ data, error }) => {
+          setIsLoadingMap(false);
+          if (!error && data?.content) {
+            setLoadedMapImage(data.content);
+            localStorage.setItem(`DFW_MAP_IMAGE_${location.id}`, data.content);
+          } else if (error) {
+            console.error("Gagal memuat peta kustom secara dinamis dari Supabase:", error);
+          } else if (!data) {
+            // Jika di Supabase benar kosong tapi di cache ada, berarti peta telah dihapus dari tempat lain
+            if (!cached) {
+              setLoadedMapImage(undefined);
+            }
+          }
+        });
+    }
+  }, [location.id]);
+
   const [isAddingPin, setIsAddingPin] = useState(false);
   const [clickCoords, setClickCoords] = useState<{ x: number; y: number } | null>(null);
   const [activePin, setActivePin] = useState<AreaMapPin | null>(null);
@@ -53,6 +86,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
         
         // Simpan ke localStorage agar tidak ter-reset
         localStorage.setItem(`DFW_MAP_IMAGE_${location.id}`, base64String);
+        setLoadedMapImage(base64String);
 
         // Simpan ke Supabase jika login
         if (supabase) {
@@ -92,6 +126,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
       customMapImage: undefined
     });
     localStorage.removeItem(`DFW_MAP_IMAGE_${location.id}`);
+    setLoadedMapImage(undefined);
 
     // Hapus di Supabase jika login
     if (supabase) {
@@ -242,7 +277,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {location.customMapImage && (
+          {loadedMapImage && (
             <button
               onClick={handleRemoveMap}
               className="px-2.5 py-1.5 border border-red-200 rounded-lg text-[11px] font-bold text-red-600 bg-red-50/50 hover:bg-red-50 hover:border-red-300 transition-all cursor-pointer flex items-center gap-1"
@@ -258,7 +293,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
             className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 hover:shadow-xs rounded-lg text-[11px] font-bold text-white transition-all cursor-pointer flex items-center gap-1 uppercase tracking-wider"
           >
             <Upload className="w-3.5 h-3.5" />
-            {location.customMapImage ? 'Ganti Peta Kustom' : 'Unggah Peta Kustom'}
+            {loadedMapImage ? 'Ganti Peta Kustom' : 'Unggah Peta Kustom'}
           </button>
           
           <input 
@@ -282,10 +317,18 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
               isSuperAdmin ? 'cursor-crosshair' : 'cursor-default'
             }`}
           >
+            {/* Loading Indicator */}
+            {isLoadingMap && !loadedMapImage && (
+              <div className="absolute inset-0 z-20 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center text-slate-300 gap-2">
+                <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
+                <span className="text-[11px] font-medium tracking-wide">Memuat Peta Terenkripsi...</span>
+              </div>
+            )}
+
             {/* Custom Map or Default Blueprint */}
-            {location.customMapImage ? (
+            {loadedMapImage ? (
               <img 
-                src={location.customMapImage} 
+                src={loadedMapImage} 
                 className="w-full h-full min-h-[380px] md:min-h-[460px] object-cover pointer-events-none" 
                 alt={`Peta zonasi lapangan ${location.name}`} 
                 referrerPolicy="no-referrer"
@@ -319,7 +362,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
             )}
 
             {/* Instruction tooltip overlay card */}
-            {isSuperAdmin && !location.customMapImage && (
+            {isSuperAdmin && !loadedMapImage && (
               <div className="absolute top-3 right-3 bg-slate-900/85 backdrop-blur-xs border border-slate-800 text-[10px] font-sans text-slate-305 px-3 py-1.5 rounded-lg max-w-[240px] pointer-events-none">
                 <span className="text-amber-450 font-bold">🎯 Mode Monitor Admin:</span> Klik di mana saja pada layar ini untuk memasang pin penjangkauan pekerja!
               </div>
