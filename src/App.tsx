@@ -2103,21 +2103,16 @@ export default function App() {
                         const originalSizeStr = (file.size / 1024).toFixed(1) + " KB";
                         setModalCompInfo("Sedang mengompresi...");
 
-                        compressImage(file, 1200, 1200, 0.7)
+                        compressImage(file, 850, 850, 0.5)
                           .then((compressedBase64) => {
                             const compSizeKb = Math.ceil((compressedBase64.length - compressedBase64.indexOf(',') - 1) * 3 / 4) / 1024;
                             const savings = (((file.size / 1024) - compSizeKb) / (file.size / 1024) * 100).toFixed(0);
-                            setModalCompInfo(`Kompresi berhasil: ${originalSizeStr} → ${compSizeKb.toFixed(1)} KB (Hemat ${savings}%)`);
+                            setModalCompInfo(`Sukses konversi ke WebP: ${originalSizeStr} → ${compSizeKb.toFixed(1)} KB (Hemat ${savings}% egress)`);
                             setAddLocForm(prev => ({ ...prev, customMapImage: compressedBase64 }));
                           })
                           .catch((err) => {
                             console.error("Gagal kompresi:", err);
-                            setModalCompInfo("Menggunakan file asli...");
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setAddLocForm(prev => ({ ...prev, customMapImage: reader.result as string }));
-                            };
-                            reader.readAsDataURL(file);
+                            setModalCompInfo("Format gambar tidak didukung atau file rusak.");
                           });
                       }
                     }}

@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { LocationData } from '../types';
 import { Anchor, MapPin, Eye, Building2, Users } from 'lucide-react';
 
-// @ts-ignore
-import mapImage from '../assets/images/indonesia_silhouette_map_1781247185286.jpg';
-
 interface IndonesiaMapProps {
   locations: LocationData[];
   selectedLocationId: string | null;
@@ -126,17 +123,16 @@ export const IndonesiaMap: React.FC<IndonesiaMapProps> = ({
             <text x="310" y="310" className="fill-slate-300 font-sans tracking-widest uppercase font-semibold text-[10px]">Lautan Hindia</text>
             <text x="400" y="40" className="fill-slate-300 font-sans tracking-widest uppercase font-semibold text-[10px]">Laut Sulawesi / Pasifik</text>
             
-            {/* Main Map Background Image (HD Detailed Silhouette) */}
-            <image
-              href={mapImage}
-              x="0"
-              y="0"
-              width="900"
-              height="360"
-              preserveAspectRatio="xMidYMid slice"
-              opacity="0.92"
-              className="pointer-events-none rounded-lg"
-            />
+            {/* Pure SVG Vector Silhouette of Indonesian Islands - Zero Egress */}
+            <g className="fill-slate-100 stroke-slate-200/50" strokeWidth="1">
+              {islands.map((island) => (
+                <path
+                  key={island.name}
+                  d={island.path}
+                  className="transition-colors duration-300 hover:fill-slate-200/50"
+                />
+              ))}
+            </g>
 
             {/* Location Pins & Pulses */}
             {locations.map((loc) => {

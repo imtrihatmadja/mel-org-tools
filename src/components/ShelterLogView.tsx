@@ -74,6 +74,7 @@ export default function ShelterLogView({ locationId, locationName, isSuperAdmin 
 
   // Filter & Search states
   const [searchWorker, setSearchWorker] = useState('');
+  const [searchDaily, setSearchDaily] = useState('');
   const [selectedDate, setSelectedDate] = useState(() => {
     // Current date format YYYY-MM-DD
     const today = new Date();
@@ -301,6 +302,14 @@ export default function ShelterLogView({ locationId, locationName, isSuperAdmin 
   const locationWorkers = useMemo(() => {
     return workers.filter(w => w.locationId === locationId);
   }, [workers, locationId]);
+
+  // Filtered workers for daily attendance list based on search bar
+  const filteredDailyWorkers = useMemo(() => {
+    return locationWorkers.filter(w => 
+      w.name.toLowerCase().includes(searchDaily.toLowerCase()) ||
+      w.origin.toLowerCase().includes(searchDaily.toLowerCase())
+    );
+  }, [locationWorkers, searchDaily]);
 
   // Handle register / update worker
   const handleOpenWorkerModal = (worker?: ShelterWorker) => {
@@ -629,80 +638,112 @@ export default function ShelterLogView({ locationId, locationName, isSuperAdmin 
                 <p className="text-[10px] text-slate-400 max-w-sm mx-auto">Untuk memulai, daftarkan data master pekerja/ABK perikanan pada lokasi ini terlebih dahulu dengan menekan tombol Registrasi Pekerja.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 font-extrabold text-slate-500 border-b border-slate-100 text-[10px] uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center">Menginap</th>
-                      <th className="py-3 px-4 w-1/3">Nama & Asal</th>
-                      <th className="py-3 px-4 w-1/5">Status Kehadiran</th>
-                      <th className="py-3 px-4">Catatan Operasional / Harian</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 font-medium text-slate-700">
-                    {locationWorkers.map((worker) => {
-                      const log = todayLogsMap.get(worker.id);
-                      const isChecked = !!log;
+              <>
+                {/* Search Bar */}
+                <div className="px-5 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Cari nama penghuni atau kota asal..."
+                      value={searchDaily}
+                      onChange={(e) => setSearchDaily(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-[11px] font-semibold text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400"
+                    />
+                  </div>
+                  {searchDaily && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchDaily('')}
+                      className="text-[10px] font-extrabold text-slate-500 hover:text-slate-800 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
 
-                      return (
-                        <tr 
-                          key={worker.id} 
-                          className={`hover:bg-slate-50/50 transition-colors ${isChecked ? 'bg-orange-50/15' : ''}`}
-                        >
-                          <td className="py-3.5 px-4 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleLog(worker.id)}
-                              className="w-4 h-4 text-blue-600 border-slate-300 rounded-sm focus:ring-blue-500 cursor-pointer accent-blue-600"
-                              disabled={!isSuperAdmin}
-                            />
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-extrabold text-slate-800">{worker.name}</div>
-                            <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                              <span className="bg-slate-100 px-1 py-0.5 rounded-sm">{worker.origin}</span>
-                              <span className="text-[10px] text-slate-300">•</span>
-                              <span className="font-semibold text-slate-500">{worker.contact}</span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {isChecked ? (
-                              <select
-                                value={log.status}
-                                disabled={!isSuperAdmin}
-                                onChange={(e) => handleUpdateLogDetails(worker.id, { status: e.target.value as any })}
-                                className="text-[10px] bg-white border border-slate-200 rounded-md p-1.5 font-bold text-slate-700 w-full focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-                              >
-                                <option value="Hadir">Hadir (Sore/Malam)</option>
-                                <option value="Sakit">Sakit / Istirahat</option>
-                                <option value="Izin">Izin Khusus</option>
-                                <option value="Keluar">Keluar Sementara</option>
-                              </select>
-                            ) : (
-                              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">Tidak menginap</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {isChecked ? (
-                              <input
-                                type="text"
-                                value={log.notes || ''}
-                                placeholder="Tulis diagnosa, kebutuhan logistic, sengketa dok..."
-                                disabled={!isSuperAdmin}
-                                onChange={(e) => handleUpdateLogDetails(worker.id, { notes: e.target.value })}
-                                className="w-full bg-white border border-slate-200 text-[10px] py-1.5 px-2.5 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-blue-500 placeholder:text-slate-300"
-                              />
-                            ) : (
-                              <span className="text-[10px] text-slate-300 italic">Kosong/Lewat</span>
-                            )}
-                          </td>
+                {filteredDailyWorkers.length === 0 ? (
+                  <div className="p-10 text-center space-y-2">
+                    <div className="text-xs font-bold text-slate-600">Nama atau kota asal tidak ditemukan</div>
+                    <p className="text-[10px] text-slate-400">Tidak ada pekerja dengan pencarian "{searchDaily}" terdaftar di hub ini.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 font-extrabold text-slate-500 border-b border-slate-100 text-[10px] uppercase tracking-wider">
+                          <th className="py-3 px-4 w-12 text-center">Menginap</th>
+                          <th className="py-3 px-4 w-1/3">Nama & Asal</th>
+                          <th className="py-3 px-4 w-1/5">Status Kehadiran</th>
+                          <th className="py-3 px-4">Catatan Operasional / Harian</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50 font-medium text-slate-700">
+                        {filteredDailyWorkers.map((worker) => {
+                          const log = todayLogsMap.get(worker.id);
+                          const isChecked = !!log;
+
+                          return (
+                            <tr 
+                              key={worker.id} 
+                              className={`hover:bg-slate-50/50 transition-colors ${isChecked ? 'bg-orange-50/15' : ''}`}
+                            >
+                              <td className="py-3.5 px-4 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => handleToggleLog(worker.id)}
+                                  className="w-4 h-4 text-blue-600 border-slate-300 rounded-sm focus:ring-blue-500 cursor-pointer accent-blue-600"
+                                  disabled={!isSuperAdmin}
+                                />
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="font-extrabold text-slate-800">{worker.name}</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                  <span className="bg-slate-100 px-1 py-0.5 rounded-sm">{worker.origin}</span>
+                                  <span className="text-[10px] text-slate-300">•</span>
+                                  <span className="font-semibold text-slate-500">{worker.contact}</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                {isChecked ? (
+                                  <select
+                                    value={log.status}
+                                    disabled={!isSuperAdmin}
+                                    onChange={(e) => handleUpdateLogDetails(worker.id, { status: e.target.value as any })}
+                                    className="text-[10px] bg-white border border-slate-200 rounded-md p-1.5 font-bold text-slate-700 w-full focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                                  >
+                                    <option value="Hadir">Hadir (Sore/Malam)</option>
+                                    <option value="Sakit">Sakit / Istirahat</option>
+                                    <option value="Izin">Izin Khusus</option>
+                                    <option value="Keluar">Keluar Sementara</option>
+                                  </select>
+                                ) : (
+                                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">Tidak menginap</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                {isChecked ? (
+                                  <input
+                                    type="text"
+                                    value={log.notes || ''}
+                                    placeholder="Tulis diagnosa, kebutuhan logistic, sengketa dok..."
+                                    disabled={!isSuperAdmin}
+                                    onChange={(e) => handleUpdateLogDetails(worker.id, { notes: e.target.value })}
+                                    className="w-full bg-white border border-slate-200 text-[10px] py-1.5 px-2.5 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-blue-500 placeholder:text-slate-300"
+                                  />
+                                ) : (
+                                  <span className="text-[10px] text-slate-300 italic">Kosong/Lewat</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

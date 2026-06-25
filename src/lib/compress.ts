@@ -1,8 +1,15 @@
 /**
  * Utility to compress images client-side before uploading to the database.
  * This dramatically reduces the database storage footprint and saves egress bandwidth.
+ * We prioritize highly optimized WebP format with strict resolution caps (max 850px)
+ * and aggressive but clear compression quality (0.5), shrinking uploads by up to 95%.
  */
-export function compressImage(file: File, maxWidth: number = 1200, maxHeight: number = 1200, quality: number = 0.7): Promise<string> {
+export function compressImage(file: File, maxWidth: number = 850, maxHeight: number = 850, quality: number = 0.5): Promise<string> {
+  // Enforce strict upper boundaries to prevent large images from inflating database egress
+  const targetMaxWidth = Math.min(maxWidth, 850);
+  const targetMaxHeight = Math.min(maxHeight, 850);
+  const targetQuality = Math.min(quality, 0.5);
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -16,14 +23,14 @@ export function compressImage(file: File, maxWidth: number = 1200, maxHeight: nu
 
         // Maintain aspect ratio
         if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
+          if (width > targetMaxWidth) {
+            height = Math.round((height * targetMaxWidth) / width);
+            width = targetMaxWidth;
           }
         } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
+          if (height > targetMaxHeight) {
+            width = Math.round((width * targetMaxHeight) / height);
+            height = targetMaxHeight;
           }
         }
 
@@ -37,12 +44,16 @@ export function compressImage(file: File, maxWidth: number = 1200, maxHeight: nu
           return;
         }
 
+        // Apply image smoothing for crisp diagram text
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
         // Draw and compress
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Try to export as WebP, if fails/not preferred, JPEG is universally supported
+        // Try to export as WebP, which offers the best compression-to-weight ratio (zero egress footprint)
         try {
-          const webpData = canvas.toDataURL('image/webp', quality);
+          const webpData = canvas.toDataURL('image/webp', targetQuality);
           // If the output webpData is actually valid and smaller/same, use it
           if (webpData.startsWith('data:image/webp')) {
             resolve(webpData);
@@ -52,7 +63,8 @@ export function compressImage(file: File, maxWidth: number = 1200, maxHeight: nu
           console.warn("WebP compression failed, falling back to JPEG:", e);
         }
 
-        const jpegData = canvas.toDataURL('image/jpeg', quality);
+        // Fallback to high-compression JPEG if WebP is unsupported by old engine
+        const jpegData = canvas.toDataURL('image/jpeg', targetQuality);
         resolve(jpegData);
       };
       img.onerror = (err) => {

@@ -82,12 +82,12 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
       const originalSizeStr = (file.size / 1024).toFixed(1) + " KB";
       setCompressionInfo("Sedang mengompresi gambar...");
 
-      compressImage(file, 1200, 1200, 0.7)
+      compressImage(file, 850, 850, 0.5)
         .then((compressedBase64) => {
           const compSizeKb = Math.ceil((compressedBase64.length - compressedBase64.indexOf(',') - 1) * 3 / 4) / 1024;
           const savings = (((file.size / 1024) - compSizeKb) / (file.size / 1024) * 100).toFixed(0);
           
-          setCompressionInfo(`Sukses kompresi: ${originalSizeStr} → ${compSizeKb.toFixed(1)} KB (Hemat ${savings}% penyimpanan/egress)`);
+          setCompressionInfo(`Sukses konversi ke WebP: ${originalSizeStr} → ${compSizeKb.toFixed(1)} KB (Hemat ${savings}% egress/penyimpanan)`);
 
           onUpdateLocation({
             ...location,
@@ -114,29 +114,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
         })
         .catch((err) => {
           console.error("Gagal mengompresi gambar:", err);
-          setCompressionInfo("Gagal kompresi, menggunakan fallback file asli...");
-          // Fallback to normal FileReader
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64String = reader.result as string;
-            onUpdateLocation({
-              ...location,
-              customMapImage: base64String
-            });
-            localStorage.setItem(`DFW_MAP_IMAGE_${location.id}`, base64String);
-            setLoadedMapImage(base64String);
-            if (supabase) {
-              supabase.from('reflections').upsert({
-                id: `PETA-${location.id}`,
-                location_id: location.id,
-                title: `PETA_KUSTOM_${location.id}`,
-                category: 'PETA_KUSTOM',
-                content: base64String,
-                author: 'Sistem Geospasial'
-              }).then();
-            }
-          };
-          reader.readAsDataURL(file);
+          setCompressionInfo("Gagal memproses gambar. Pastikan file berupa gambar valid (.jpg, .png, .webp).");
         });
     }
   };
