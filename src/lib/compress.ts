@@ -4,11 +4,11 @@
  * We prioritize highly optimized WebP format with strict resolution caps (max 850px)
  * and aggressive but clear compression quality (0.5), shrinking uploads by up to 95%.
  */
-export function compressImage(file: File, maxWidth: number = 850, maxHeight: number = 850, quality: number = 0.5): Promise<string> {
+export function compressImage(file: File, maxWidth: number = 720, maxHeight: number = 720, quality: number = 0.38): Promise<string> {
   // Enforce strict upper boundaries to prevent large images from inflating database egress
-  const targetMaxWidth = Math.min(maxWidth, 850);
-  const targetMaxHeight = Math.min(maxHeight, 850);
-  const targetQuality = Math.min(quality, 0.5);
+  const targetMaxWidth = Math.min(maxWidth, 720);
+  const targetMaxHeight = Math.min(maxHeight, 720);
+  const targetQuality = Math.min(quality, 0.38);
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

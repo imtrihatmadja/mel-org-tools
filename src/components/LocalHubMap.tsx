@@ -82,7 +82,7 @@ export default function LocalHubMap({ location, onUpdateLocation, isSuperAdmin, 
       const originalSizeStr = (file.size / 1024).toFixed(1) + " KB";
       setCompressionInfo("Sedang mengompresi gambar...");
 
-      compressImage(file, 850, 850, 0.5)
+      compressImage(file, 720, 720, 0.38)
         .then((compressedBase64) => {
           const compSizeKb = Math.ceil((compressedBase64.length - compressedBase64.indexOf(',') - 1) * 3 / 4) / 1024;
           const savings = (((file.size / 1024) - compSizeKb) / (file.size / 1024) * 100).toFixed(0);
