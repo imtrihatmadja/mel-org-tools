@@ -154,3 +154,57 @@ INSERT INTO national_trend (year, workers_reached, learning_circles, cases_handl
 (2025, 3500, 32, 112, 90),
 (2026, 0, 0, 0, 0) -- Nilai awal 2026 kosong untuk entri real Anda
 ON CONFLICT (year) DO NOTHING;
+
+
+-- =========================================================================
+-- ROW LEVEL SECURITY (RLS) & ACCESS POLICIES CONFIGURATION
+-- =========================================================================
+
+-- Aktifkan Row Level Security (RLS) pada semua tabel utama untuk mematuhi standar keamanan Supabase
+ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE champions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE case_progress_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE timeline_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reflections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beneficiaries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE national_trend ENABLE ROW LEVEL SECURITY;
+
+-- Buat Kebijakan Akses (Policies) agar aplikasi web dapat membaca & memodifikasi data secara penuh
+
+-- 1. Kebijakan Akses untuk lokasi (locations)
+DROP POLICY IF EXISTS "Enable all access for locations" ON locations;
+CREATE POLICY "Enable all access for locations" ON locations FOR ALL USING (true) WITH CHECK (true);
+
+-- 2. Kebijakan Akses untuk organisasi (organizations)
+DROP POLICY IF EXISTS "Enable all access for organizations" ON organizations;
+CREATE POLICY "Enable all access for organizations" ON organizations FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. Kebijakan Akses untuk kader champions (champions)
+DROP POLICY IF EXISTS "Enable all access for champions" ON champions;
+CREATE POLICY "Enable all access for champions" ON champions FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. Kebijakan Akses untuk laporan kasus (cases)
+DROP POLICY IF EXISTS "Enable all access for cases" ON cases;
+CREATE POLICY "Enable all access for cases" ON cases FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. Kebijakan Akses untuk perkembangan catatan kasus (case_progress_notes)
+DROP POLICY IF EXISTS "Enable all access for case_progress_notes" ON case_progress_notes;
+CREATE POLICY "Enable all access for case_progress_notes" ON case_progress_notes FOR ALL USING (true) WITH CHECK (true);
+
+-- 6. Kebijakan Akses untuk peristiwa lini masa (timeline_events)
+DROP POLICY IF EXISTS "Enable all access for timeline_events" ON timeline_events;
+CREATE POLICY "Enable all access for timeline_events" ON timeline_events FOR ALL USING (true) WITH CHECK (true);
+
+-- 7. Kebijakan Akses untuk catatan refleksi/temuan (reflections)
+DROP POLICY IF EXISTS "Enable all access for reflections" ON reflections;
+CREATE POLICY "Enable all access for reflections" ON reflections FOR ALL USING (true) WITH CHECK (true);
+
+-- 8. Kebijakan Akses untuk data penerima manfaat (beneficiaries)
+DROP POLICY IF EXISTS "Enable all access for beneficiaries" ON beneficiaries;
+CREATE POLICY "Enable all access for beneficiaries" ON beneficiaries FOR ALL USING (true) WITH CHECK (true);
+
+-- 9. Kebijakan Akses untuk tren tahunan (national_trend)
+DROP POLICY IF EXISTS "Enable all access for national_trend" ON national_trend;
+CREATE POLICY "Enable all access for national_trend" ON national_trend FOR ALL USING (true) WITH CHECK (true);
