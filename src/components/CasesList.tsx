@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Case, CaseUpdate } from '../types';
+import { mockData } from '../data/mockData';
 import {
   Search,
   AlertTriangle,
@@ -441,15 +442,23 @@ export const CasesList: React.FC<CasesListProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Kategori Utama *</label>
-                    <input
-                      type="text"
-                      required
+                    <select
                       disabled={!isSuperAdmin}
                       value={caseForm.category}
                       onChange={(e) => setCaseForm({ ...caseForm, category: e.target.value })}
-                      placeholder="Misal: Pelanggaran K3"
-                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 text-slate-800 bg-slate-50 focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
-                    />
+                      className="w-full text-xs font-semibold border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white text-slate-800 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed font-sans"
+                    >
+                      <option value="">-- Pilih Kategori --</option>
+                      {Object.values(mockData.issueTaxonomyLabels).map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                      {/* Maintain pre-existing custom categories that are not in the default taxonomy */}
+                      {caseForm.category && !Object.values(mockData.issueTaxonomyLabels).includes(caseForm.category) && (
+                        <option value={caseForm.category}>{caseForm.category}</option>
+                      )}
+                    </select>
                   </div>
 
                   <div>

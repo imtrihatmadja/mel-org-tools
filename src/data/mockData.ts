@@ -11,7 +11,10 @@ export const mockData: GlobalMockData = {
     missingWorker: "ABK Hilang",
     forcedLabor: "Risiko Kerja Paksa",
     unpaidWages: "Gaji Tidak Dibayar",
-    statelessness: "Status Tanpa Kewarganegaraan"
+    statelessness: "Status Tanpa Kewarganegaraan",
+    workAccident: "Kecelakaan Kerja",
+    sickness: "Sakit",
+    death: "Kematian"
   },
   locations: [
     {
